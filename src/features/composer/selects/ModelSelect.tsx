@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type { JsonObject } from '../../../../shared/types.ts'
+import { fuzzyModelMatch } from '../composer-utils.ts'
 import { ComposerSelect } from './ComposerSelect.tsx'
 
 /** Selects the active LLM model from Pi's available models, issuing a set_model command on change. */
@@ -30,12 +31,15 @@ export function ModelSelect(
             .catch(onError)
       }}
       options={models.map((item) => {
-        // Display the provider alongside the model name and search against the
-        // combined "provider/model" form, so "opencode-go/deepseek-v4-flash"
-        // and "deepseek-v4-flash" both match.
-        const label = `${item.provider}/${item.name ?? item.id}`
-        return { label, value: `${item.provider}/${item.id}` }
+        // Value is the canonical "provider/id" (hyphenated); label shows the
+        // provider alongside the human-readable name. Search matches both the
+        // hyphenated id and the spaced display name, and tolerates typos.
+        return {
+          label: `${item.provider}/${item.name ?? item.id}`,
+          value: `${item.provider}/${item.id}`,
+        }
       })}
+      filter={(query, option) => fuzzyModelMatch(query, option.value, option.label)}
       placeholder='Choose a model'
       searchable
       searchEmptyLabel='No models match your search'

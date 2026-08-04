@@ -1,11 +1,20 @@
 import * as Select from '@radix-ui/react-select'
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 
+export interface SelectOption {
+  description?: string
+  kind?: 'action'
+  label: string
+  value: string
+  searchText?: string
+}
+
 /** Generic Radix-based select dropdown shared by all composer toolbar controls. */
 export function ComposerSelect(
   {
     ariaLabel,
     disabled,
+    filter,
     onOpenChange,
     onValueChange,
     open,
@@ -23,8 +32,10 @@ export function ComposerSelect(
   }: {
     ariaLabel: string
     disabled?: boolean
+    /** Custom option filter for the search box; defaults to substring match. */
+    filter?: (query: string, option: SelectOption) => boolean
     onValueChange: (value: string) => void
-    options: { description?: string; kind?: 'action'; label: string; value: string }[]
+    options: SelectOption[]
     placeholder?: string
     searchable?: boolean
     searchPlaceholder?: string
@@ -46,21 +57,21 @@ export function ComposerSelect(
     if (!open) setQuery('')
   }, [open])
 
-  // Filter the options against the query. The label carries the searchable text
-  // (for models it is "provider/model"), so typing either the full provider/model
-  // form or just the model name matches. Descriptions are also matched.
-  const visibleOptions = useMemo(
-    () =>
-      searchable
-        ? options.filter(
-          (option) =>
-            `${option.label} ${option.description ?? ''}`.toLowerCase().includes(
-              query.trim().toLowerCase(),
-            ),
-        )
-        : options,
-    [searchable, options, query],
-  )
+  // Filter the options against the query. Without a custom filter the default
+  // substring match covers the label, the canonical search text (for models it
+  // is "provider/id") and the description, so both the friendly display name
+  // and the canonical provider/model form match.
+  const visibleOptions = useMemo(() => {
+    const trimmed = query.trim().toLowerCase()
+    if (!searchable) return options
+    if (filter) return options.filter((option) => filter(trimmed, option))
+    return options.filter(
+      (option) =>
+        `${option.label} ${option.searchText ?? ''} ${option.description ?? ''}`
+          .toLowerCase()
+          .includes(trimmed),
+    )
+  }, [searchable, filter, options, query])
 
   return (
     <Select.Root

@@ -1,5 +1,4 @@
 import type { RecentSession, SessionSummary } from '../../../shared/types.ts'
-import { sessionIndicator } from './session-indicator.ts'
 
 /** Adds only sent sessions still missing from persistence, preserving the server order otherwise. */
 export function sidebarSessions(
@@ -15,26 +14,38 @@ export function sidebarSessions(
   return [...pending, ...recentSessions].filter(({ cwd }) => cwd === workspacePath)
 }
 
-/** Lists attention-worthy sessions outside the current workspace, with active work first. */
-export function otherWorkspaceSessions(
-  sessions: SessionSummary[],
+/** Live, non-exited sessions from every workspace, busiest (working/waiting) first.
+ *  Surfaced in the sidebar regardless of the workspace that is currently open. */
+export function activeWorkspaceSessions(sessions: SessionSummary[]): SessionSummary[] {
+  const statusPriority: Record<SessionSummary['status'], number> = {
+    running: 0,
+    starting: 1,
+    idle: 2,
+    exited: 3,
+  }
+  return sessions
+    .filter((session) => session.status !== 'exited')
+    .sort((left, right) => statusPriority[left.status] - statusPriority[right.status])
+}
+
+/** Recently active sessions from added workspaces other than the open one.
+ *  Excludes sessions backed by a live Pi process (those live in the active section). */
+export function recentOtherWorkspaceSessions(
+  recentSessions: RecentSession[],
+  activeSessions: SessionSummary[],
   workspacePath: string,
-  compactingSessionIds: ReadonlySet<string>,
-  completedSessionIds: ReadonlySet<string>,
-): SessionSummary[] {
-  const relevant = sessions.filter((session) =>
-    session.cwd !== workspacePath
-    && session.status !== 'exited'
-    && sessionIndicator(session, '', compactingSessionIds, completedSessionIds) !== null
+): RecentSession[] {
+  const activePaths = new Set(
+    activeSessions.map((session) => session.sessionPath).filter((path): path is string =>
+      Boolean(path)
+    ),
   )
-  return [
-    ...relevant.filter((session) =>
-      sessionIndicator(session, '', compactingSessionIds, completedSessionIds) !== 'complete'
-    ),
-    ...relevant.filter((session) =>
-      sessionIndicator(session, '', compactingSessionIds, completedSessionIds) === 'complete'
-    ),
-  ]
+  return recentSessions
+    .filter((session) =>
+      session.cwd !== workspacePath
+      && !activePaths.has(session.sessionPath)
+    )
+    .sort((left, right) => right.updatedAt - left.updatedAt)
 }
 
 /**

@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { RecentSession, SessionSummary } from '../shared/types.ts'
 import {
-  otherWorkspaceSessions,
+  activeWorkspaceSessions,
   pickSessionOnOpen,
+  recentOtherWorkspaceSessions,
   sidebarSessions,
 } from '../src/features/workspace/sidebar-sessions.ts'
 
@@ -42,7 +43,7 @@ test('uses persisted order once the sent session is returned', () => {
   ])
 })
 
-// -- otherWorkspaceSessions ------------------------------------------------
+// -- activeWorkspaceSessions --------------------------------------------------------------------
 
 const remoteSession: SessionSummary = {
   id: 'remote-1',
@@ -53,40 +54,75 @@ const remoteSession: SessionSummary = {
   pendingUi: [],
 }
 
-test('shows active and unviewed completed sessions from other workspaces, active first', () => {
+test('lists every live session from any workspace, busiest first', () => {
   const completed = {
     ...remoteSession,
-    id: 'completed',
-    sessionPath: '/sessions/completed.jsonl',
+    id: 'idle-1',
     status: 'idle' as const,
   }
   const starting = {
     ...remoteSession,
-    id: 'starting',
-    sessionPath: '/sessions/starting.jsonl',
+    id: 'starting-1',
     status: 'starting' as const,
+  }
+  const exited = {
+    ...remoteSession,
+    id: 'exited-1',
+    status: 'exited' as const,
   }
 
   assert.deepEqual(
-    otherWorkspaceSessions(
-      [completed, starting],
-      '/workspace',
-      new Set(),
-      new Set(['/sessions/completed.jsonl']),
-    ),
-    [starting, completed],
+    activeWorkspaceSessions([completed, starting, exited, remoteSession]),
+    [remoteSession, starting, completed],
   )
 })
 
-test('hides current, idle viewed, and exited sessions from other workspaces', () => {
-  const current = { ...remoteSession, cwd: '/workspace' }
-  const idle = { ...remoteSession, id: 'idle', status: 'idle' as const }
+test('activeWorkspaceSessions drops exited sessions', () => {
   const exited = { ...remoteSession, id: 'exited', status: 'exited' as const }
+  assert.deepEqual(activeWorkspaceSessions([exited]), [])
+})
 
+// -- recentOtherWorkspaceSessions ------------------------------------------------------------
+
+const otherRecent: RecentSession = {
+  id: 'other-1',
+  cwd: '/remote',
+  name: 'Other recent',
+  sessionPath: '/sessions/other.jsonl',
+  updatedAt: 500,
+}
+
+const inWorkspaceRecent: RecentSession = {
+  ...otherRecent,
+  id: 'current-1',
+  cwd: '/workspace',
+  sessionPath: '/sessions/current.jsonl',
+}
+
+const olderRecent: RecentSession = {
+  ...otherRecent,
+  id: 'older-1',
+  sessionPath: '/sessions/older.jsonl',
+  updatedAt: 100,
+}
+
+test('shows recent sessions from other workspaces, newest first', () => {
   assert.deepEqual(
-    otherWorkspaceSessions([current, idle, exited], '/workspace', new Set(), new Set()),
+    recentOtherWorkspaceSessions([olderRecent, otherRecent], [], '/workspace'),
+    [otherRecent, olderRecent],
+  )
+})
+
+test('hides recent sessions from the opened workspace', () => {
+  assert.deepEqual(
+    recentOtherWorkspaceSessions([inWorkspaceRecent], [], '/workspace'),
     [],
   )
+})
+
+test('hides recently active sessions backed by a live process (they live in the active section)', () => {
+  const live = { ...remoteSession, id: 'other-1', sessionPath: '/sessions/other.jsonl' }
+  assert.deepEqual(recentOtherWorkspaceSessions([otherRecent], [live], '/workspace'), [])
 })
 
 // -- pickSessionOnOpen ------------------------------------------------------

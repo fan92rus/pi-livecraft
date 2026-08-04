@@ -355,6 +355,23 @@
   font: 10px/1.3 ui-monospace, monospace;
 }
 
+.active-sessions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  max-height: 35%;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.active-sessions h2 {
+  margin: 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .other-workspace-sessions {
   display: flex;
   flex: 0 1 auto;

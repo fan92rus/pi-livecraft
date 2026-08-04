@@ -96,17 +96,21 @@ export function useWorkspaceSessions(
 
   useEffect(() => writeCompletedSessionIds(completedSessionIds), [completedSessionIds])
 
-  /** Reloads sessions while discarding responses superseded by a newer workspace refresh. */
+  /** Reloads sessions while discarding responses superseded by a newer workspace refresh.
+   *  Recent sessions are loaded for every added workspace so the sidebar can surface active
+   *  and recently active sessions regardless of which directory is currently open. */
   const refreshSessions = useCallback(async (cwd = workspacePath) => {
     const version = ++refreshVersionRef.current
     const shouldAutoSelect = autoSelectOnRefreshRef.current
     setIsRefreshingSessions(true)
     try {
-      const [nextSessions, nextRecentSessions] = await Promise.all([
+      const workspacePaths = [...new Set([cwd, ...recentWorkspacePaths])]
+      const [nextSessions, recentByWorkspace] = await Promise.all([
         listSessions(),
-        listRecentSessions(cwd),
+        Promise.all(workspacePaths.map((path) => listRecentSessions(path))),
       ])
       if (version !== refreshVersionRef.current) return
+      const nextRecentSessions = recentByWorkspace.flat()
       const autoSelectId = shouldAutoSelect
         ? pickSessionOnOpen(
           sidebarSessions(nextRecentSessions, cwd, sentSessionsRef.current),
@@ -162,7 +166,7 @@ export function useWorkspaceSessions(
     } finally {
       if (version === refreshVersionRef.current) setIsRefreshingSessions(false)
     }
-  }, [onError, onSessionsRefreshed, workspacePath])
+  }, [onError, onSessionsRefreshed, recentWorkspacePaths, workspacePath])
 
   useEffect(() => void refreshSessions(), [refreshSessions])
 

@@ -10,7 +10,11 @@ import { Tooltip } from '../../components/Tooltip.tsx'
 import type { RecentSession, SessionSummary } from '../../../shared/types.ts'
 import { sessionIndicator } from './session-indicator.ts'
 import { SessionStatusIndicator } from './SessionStatusIndicator.tsx'
-import { otherWorkspaceSessions, sidebarSessions } from './sidebar-sessions.ts'
+import {
+  activeWorkspaceSessions,
+  recentOtherWorkspaceSessions,
+  sidebarSessions,
+} from './sidebar-sessions.ts'
 import { maxWorkspaceSidebarWidth, minWorkspaceSidebarWidth } from './workspace-sidebar.ts'
 
 interface WorkspaceSidebarProps {
@@ -67,14 +71,21 @@ export function WorkspaceSidebar({
     } | null
   >(null)
   const selectedSessionRef = useRef<HTMLButtonElement>(null)
-  const visibleSessions = useMemo(
-    () => sidebarSessions(recentSessions, workspacePath, sentSessions),
-    [recentSessions, sentSessions, workspacePath],
+  const activeSessions = useMemo(
+    () => activeWorkspaceSessions(sessions),
+    [sessions],
   )
-  const otherSessions = useMemo(
-    () =>
-      otherWorkspaceSessions(sessions, workspacePath, compactingSessionIds, completedSessionIds),
-    [compactingSessionIds, completedSessionIds, sessions, workspacePath],
+  const activePaths = useMemo(() => new Set(activeSessions.map((s) => s.sessionPath)), [
+    activeSessions,
+  ])
+  const visibleSessions = useMemo(() => {
+    const recent = sidebarSessions(recentSessions, workspacePath, sentSessions)
+    // Live sessions appear in the active section; keep the recent list to completed history.
+    return recent.filter((session) => !activePaths.has(session.sessionPath))
+  }, [activePaths, recentSessions, sentSessions, workspacePath])
+  const otherRecentSessions = useMemo(
+    () => recentOtherWorkspaceSessions(recentSessions, activeSessions, workspacePath),
+    [activeSessions, recentSessions, workspacePath],
   )
 
   useEffect(() => {
@@ -194,6 +205,54 @@ export function WorkspaceSidebar({
         </Tooltip>
       </div>
       <NewSessionButton onCreate={onCreate} onError={onError} />
+      {activeSessions.length > 0 && (
+        <section className='active-sessions'>
+          <h2>Active</h2>
+          <nav aria-label='Live Pi sessions' className='other-session-list'>
+            {activeSessions.map((session) => {
+              const inCurrentWorkspace = session.cwd === workspacePath
+              const indicator = sessionIndicator(
+                session,
+                selectedId,
+                compactingSessionIds,
+                completedSessionIds,
+              )
+              return (
+                <Tooltip key={session.id} label={`${session.name}\n${session.cwd}`}>
+                  <button
+                    aria-label={inCurrentWorkspace
+                      ? session.name
+                      : `${session.name} in workspace ${session.cwd}`}
+                    className={`session-item${session.id === selectedId ? ' selected' : ''}${
+                      indicator ? ` ${indicator}` : ''
+                    }`}
+                    onClick={() => {
+                      if (inCurrentWorkspace) onSelectSession(session.id)
+                      else onSelectOtherWorkspaceSession(session)
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault()
+                      setContextMenu({
+                        x: event.clientX,
+                        y: event.clientY,
+                        sessionPath: session.sessionPath ?? session.id,
+                        sessionId: session.id,
+                      })
+                    }}
+                    type='button'
+                  >
+                    {indicator && <SessionStatusIndicator status={indicator} />}
+                    <span>
+                      <strong>{session.name}</strong>
+                      {!inCurrentWorkspace && <small>{session.cwd}</small>}
+                    </span>
+                  </button>
+                </Tooltip>
+              )
+            })}
+          </nav>
+        </section>
+      )}
       <nav className='session-list' aria-label='Recent Pi sessions'>
         {isRefreshing && visibleSessions.length === 0 && (
           <p className='session-list-loading' role='status'>Loading sessions…</p>
@@ -254,40 +313,43 @@ export function WorkspaceSidebar({
           )
         })}
         {visibleSessions.length === 0 && !isRefreshing && (
-          <p className='empty-sidebar'>No Pi sessions in this directory.</p>
+          <p className='empty-sidebar'>
+            {activeSessions.some((session) => session.cwd === workspacePath)
+              ? 'No completed sessions in this directory.'
+              : 'No Pi sessions in this directory.'}
+          </p>
         )}
       </nav>
-      {otherSessions.length > 0 && (
+      {otherRecentSessions.length > 0 && (
         <section className='other-workspace-sessions'>
-          <h2>Other workspaces</h2>
+          <h2>Recently active</h2>
           <nav
-            aria-label='Active and completed sessions in other workspaces'
+            aria-label='Recently active sessions in other workspaces'
             className='other-session-list'
           >
-            {otherSessions.map((session) => {
-              const indicator = sessionIndicator(
-                session,
-                selectedId,
-                compactingSessionIds,
-                completedSessionIds,
-              )
-              return (
-                <Tooltip key={session.id} label={`${session.name}\n${session.cwd}`}>
-                  <button
-                    aria-label={`${session.name} in workspace ${session.cwd}`}
-                    className={`session-item${indicator ? ` ${indicator}` : ''}`}
-                    onClick={() => onSelectOtherWorkspaceSession(session)}
-                    type='button'
-                  >
-                    {indicator && <SessionStatusIndicator status={indicator} />}
-                    <span>
-                      <strong>{session.name}</strong>
-                      <small>{session.cwd}</small>
-                    </span>
-                  </button>
-                </Tooltip>
-              )
-            })}
+            {otherRecentSessions.map((recent) => (
+              <Tooltip
+                key={recent.sessionPath}
+                label={`${recent.name}\n${new Date(recent.updatedAt).toLocaleString('en-US')}`}
+              >
+                <button
+                  aria-label={`${recent.name} in workspace ${recent.cwd}`}
+                  className='session-item'
+                  onClick={() => {
+                    setOpeningSessionPath(recent.sessionPath)
+                    void onOpenSession(recent).catch(onError).finally(() =>
+                      setOpeningSessionPath('')
+                    )
+                  }}
+                  type='button'
+                >
+                  <span>
+                    <strong>{recent.name}</strong>
+                    <small>{recent.cwd}</small>
+                  </span>
+                </button>
+              </Tooltip>
+            ))}
           </nav>
         </section>
       )}

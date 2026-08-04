@@ -120,6 +120,8 @@ export interface ManagerRequest {
     | 'list'
     | 'create'
     | 'open'
+    | 'delete'
+    | 'close'
     | 'command'
     | 'improve_prompt'
     | 'run_prompt'
@@ -152,6 +154,8 @@ export interface ManagerEvent {
   kind: 'event'
   event:
     | 'session_created'
+    | 'session_closed'
+    | 'session_deleted'
     | 'session_exited'
     | 'manager_connected'
     | 'manager_disconnected'

@@ -579,3 +579,51 @@
   background: var(--accent-soft);
   color: var(--accent-hover);
 }
+
+/* Context menu for session items (right-click actions). */
+.session-context-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.session-context-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font: 12px ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.session-context-item:hover:not(:disabled),
+.session-context-item:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+.session-context-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.session-context-item:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.session-context-item.danger {
+  color: var(--danger);
+}
+.session-context-item.danger:hover:not(:disabled),
+.session-context-item.danger:focus-visible {
+  background: var(--danger-soft);
+  color: var(--danger);
+}

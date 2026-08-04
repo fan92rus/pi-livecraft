@@ -285,6 +285,8 @@ function App() {
     completedSessionIds,
     creatingSession,
     directoryPickerOpen,
+    handleCloseSession,
+    handleDeleteSession,
     isRefreshingSessions,
     markSessionCompleted,
     nameSessionFromFirstPrompt,
@@ -633,6 +635,7 @@ function App() {
         setManagerRuntimeStatus(managerEvent.data)
       if (
         managerEvent.event === 'manager_connected' || managerEvent.event === 'session_created'
+        || managerEvent.event === 'session_closed' || managerEvent.event === 'session_deleted'
         || managerEvent.event === 'session_exited'
       ) void refreshSessions()
       if (managerEvent.event === 'pi' && isObject(managerEvent.data))
@@ -1048,6 +1051,8 @@ function App() {
         onCreate={async () => {
           await startAndSelectSession(() => createSession(workspacePath))
         }}
+        onCloseSession={handleCloseSession}
+        onDeleteSession={handleDeleteSession}
         onOpenSession={async (recentSession) => {
           await startAndSelectSession(() => openSession(workspacePath, recentSession.sessionPath))
         }}

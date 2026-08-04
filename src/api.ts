@@ -19,6 +19,8 @@ import { isObject } from '../shared/is-object.ts'
 
 const managerEventNames: readonly ManagerEvent['event'][] = [
   'session_created',
+  'session_closed',
+  'session_deleted',
   'session_exited',
   'manager_connected',
   'manager_disconnected',
@@ -199,6 +201,25 @@ export async function openSession(cwd: string, sessionPath: string): Promise<Ses
   return request<SessionSummary>('/api/sessions', {
     method: 'POST',
     body: JSON.stringify({ cwd, sessionPath }),
+  })
+}
+
+/** Terminates an active session's Pi process while keeping its history reopenable. */
+export async function closeSession(sessionId: string): Promise<{ closed: boolean }> {
+  return request<{ closed: boolean }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/close`,
+    { method: 'POST' },
+  )
+}
+
+/** Permanently deletes a session file, closing its Pi process first when it is active. */
+export async function deleteSession(
+  sessionId: string | undefined,
+  sessionPath: string,
+): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>('/api/sessions/delete', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId, sessionPath }),
   })
 }
 

@@ -369,6 +369,28 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
     return
   }
 
+  const closeMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/close$/)
+  if (method === 'POST' && closeMatch) {
+    const data = await manager.request({
+      action: 'close',
+      sessionId: decodeURIComponent(closeMatch[1]),
+    })
+    sendJson(response, 200, data)
+    return
+  }
+
+  const deleteMatch = url.pathname.match(/^\/api\/sessions\/delete$/)
+  if (method === 'POST' && deleteMatch) {
+    const body = await readJsonBody(request)
+    const data = await manager.request({
+      action: 'delete',
+      sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
+      sessionPath: typeof body.sessionPath === 'string' ? body.sessionPath : undefined,
+    })
+    sendJson(response, 200, data)
+    return
+  }
+
   const snapshotMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/snapshot$/)
   if (method === 'GET' && snapshotMatch) {
     const sessionId = decodeURIComponent(snapshotMatch[1])

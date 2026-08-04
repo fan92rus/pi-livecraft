@@ -25,6 +25,8 @@ interface WorkspaceSidebarProps {
   workspacePath: string
   onChooseWorkspace: () => void
   onCreate: () => Promise<void>
+  onCloseSession: (sessionId: string) => void | Promise<void>
+  onDeleteSession: (sessionId: string | undefined, sessionPath: string) => void | Promise<void>
   onOpenSession: (session: RecentSession) => Promise<void>
   onSelectOtherWorkspaceSession: (session: SessionSummary) => void
   onSelectSession: (sessionId: string) => void
@@ -46,6 +48,8 @@ export function WorkspaceSidebar({
   workspacePath,
   onChooseWorkspace,
   onCreate,
+  onCloseSession,
+  onDeleteSession,
   onOpenSession,
   onSelectOtherWorkspaceSession,
   onSelectSession,
@@ -54,6 +58,14 @@ export function WorkspaceSidebar({
   onError,
 }: WorkspaceSidebarProps) {
   const [openingSessionPath, setOpeningSessionPath] = useState('')
+  const [contextMenu, setContextMenu] = useState<
+    {
+      x: number
+      y: number
+      sessionPath: string
+      sessionId: string | undefined
+    } | null
+  >(null)
   const selectedSessionRef = useRef<HTMLButtonElement>(null)
   const visibleSessions = useMemo(
     () => sidebarSessions(recentSessions, workspacePath, sentSessions),
@@ -68,6 +80,33 @@ export function WorkspaceSidebar({
   useEffect(() => {
     selectedSessionRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [selectedId, visibleSessions])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const onPointerDown = (event: MouseEvent): void => {
+      const target = event.target as Node | null
+      if (target && target instanceof Element && target.closest('.session-context-menu')) {
+        event.preventDefault()
+        return
+      }
+      setContextMenu(null)
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setContextMenu(null)
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    document.addEventListener('contextmenu', (event) => {
+      const target = event.target as Node | null
+      if (target && target instanceof Element && target.closest('.session-context-menu')) {
+        event.preventDefault()
+      }
+    })
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [contextMenu])
 
   function startResize(event: ReactPointerEvent<HTMLDivElement>): void {
     const handle = event.currentTarget
@@ -194,6 +233,15 @@ export function WorkspaceSidebar({
                     setOpeningSessionPath('')
                   )
                 }}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  setContextMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    sessionPath: recentSession.sessionPath,
+                    sessionId: activeSession?.id,
+                  })
+                }}
                 ref={activeSession?.id === selectedId ? selectedSessionRef : undefined}
                 type='button'
               >
@@ -243,6 +291,27 @@ export function WorkspaceSidebar({
           </nav>
         </section>
       )}
+      {contextMenu && (
+        <SessionContextMenu
+          sessionId={contextMenu.sessionId}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onCloseSession={() => {
+            if (contextMenu.sessionId) {
+              Promise.resolve(onCloseSession(contextMenu.sessionId)).catch(onError)
+            }
+            setContextMenu(null)
+          }}
+          onDeleteSession={() => {
+            Promise
+              .resolve(
+                onDeleteSession(contextMenu.sessionId, contextMenu.sessionPath),
+              )
+              .catch(onError)
+            setContextMenu(null)
+          }}
+        />
+      )}
     </aside>
   )
 }
@@ -273,6 +342,58 @@ function NewSessionButton(
     >
       {busy ? 'Starting…' : '＋ New session'}
     </button>
+  )
+}
+
+/** Context menu shown on right-click over a session item. */
+function SessionContextMenu({
+  sessionId,
+  x,
+  y,
+  onCloseSession,
+  onDeleteSession,
+}: {
+  sessionId: string | undefined
+  x: number
+  y: number
+  onCloseSession: () => void
+  onDeleteSession: () => void
+}) {
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    left: x,
+    top: y,
+    zIndex: 900,
+  }
+  return (
+    <div className='session-context-menu' role='menu' style={style}>
+      {sessionId && (
+        <button
+          className='session-context-item'
+          onClick={onCloseSession}
+          role='menuitem'
+          tabIndex={0}
+          type='button'
+        >
+          <span aria-hidden='true'>⏻</span>Close session
+        </button>
+      )}
+      <button
+        className='session-context-item danger'
+        onClick={() => {
+          if (
+            window.confirm(
+              'Delete this session? This permanently removes its history and cannot be undone.',
+            )
+          ) onDeleteSession()
+        }}
+        role='menuitem'
+        tabIndex={0}
+        type='button'
+      >
+        <span aria-hidden='true'>🗑</span>Delete session
+      </button>
+    </div>
   )
 }
 

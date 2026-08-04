@@ -6,10 +6,13 @@
  * ManagerClient; never spawn Pi directly or bypass the supervised lifecycle.
  */
 import { randomUUID } from 'node:crypto'
-import { realpath, stat } from 'node:fs/promises'
+import { realpath, stat, unlink } from 'node:fs/promises'
 import { createServer, type Socket } from 'node:net'
+import { homedir } from 'node:os'
+import { sep } from 'node:path'
 import { JsonLineDecoder, encodeJsonLine } from './jsonl.ts'
 import { PiProcess, terminateAllPiProcesses } from './pi-process.ts'
+import { resolvePiSessionDirectory } from './pi-session-store.ts'
 import {
   generateProjectMap,
   improvementDirectionInstruction,
@@ -135,6 +138,8 @@ async function handleRequest(socket: Socket, value: unknown): Promise<void> {
       data = listSessions()
     } else if (value.action === 'create') data = await createSession(value)
     else if (value.action === 'open') data = await openSession(value)
+    else if (value.action === 'close') data = await closeSession(value)
+    else if (value.action === 'delete') data = await deleteSession(value)
     else if (value.action === 'improve_prompt') data = await improvePrompt(value)
     else if (value.action === 'run_prompt') data = await runPrompt(value)
     else data = await sendCommand(value)
@@ -248,6 +253,59 @@ async function startSession(summary: SessionSummary): Promise<void> {
     await pi.terminate()
     throw error
   }
+}
+
+/** Terminates a session's Pi process while keeping its persisted session file reopenable. */
+async function closeSession(request: ManagerRequest): Promise<{ closed: boolean }> {
+  if (typeof request.sessionId !== 'string')
+    throw new Error('Session id is required to close a session')
+  const session = sessions.get(request.sessionId)
+  if (!session || session.summary.status === 'exited') return { closed: false }
+  if (session.summary.status === 'starting') throw new Error('Session is still starting')
+  const { summary, pi } = session
+  sessions.delete(summary.id)
+  await pi.terminate()
+  summary.status = 'exited'
+  broadcast({ kind: 'event', event: 'session_closed', sessionId: summary.id, data: summary })
+  return { closed: true }
+}
+
+/** Terminates a session's Pi process and permanently deletes its persisted session file. */
+async function deleteSession(request: ManagerRequest): Promise<{ deleted: boolean }> {
+  let sessionPath = request.sessionPath
+  if (typeof request.sessionId === 'string') {
+    const session = sessions.get(request.sessionId)
+    if (session) {
+      const { summary, pi } = session
+      if (summary.status === 'starting') throw new Error('Session is still starting')
+      if (summary.status === 'running')
+        throw new Error('Refusing to delete a session with active work; let it settle first')
+      sessionPath = request.sessionPath ?? summary.sessionPath
+      sessions.delete(summary.id)
+      await pi.terminate()
+      summary.status = 'exited'
+      broadcast({ kind: 'event', event: 'session_deleted', sessionId: summary.id, data: summary })
+    }
+  }
+  if (typeof sessionPath !== 'string')
+    throw new Error('Session id or session path is required to delete a session')
+  if (!passesSessionPathGuard(sessionPath))
+    throw new Error('Session path must live in the Pi session directory')
+  try {
+    await unlink(sessionPath)
+  } catch (error) {
+    if (!(isObject(error) && error.code === 'ENOENT')) throw error
+  }
+  return { deleted: true }
+}
+
+/** Rejects session paths outside Pi's session storage before any destructive unlink. */
+function passesSessionPathGuard(sessionPath: string): boolean {
+  const directory = resolvePiSessionDirectory(process.env, homedir())
+  const canonicalDirectory = directory.endsWith(sep) ? directory.slice(0, -1) : directory
+  const canonicalPath = sessionPath.endsWith(sep) ? sessionPath.slice(0, -1) : sessionPath
+  if (canonicalPath === canonicalDirectory) return false
+  return canonicalPath.startsWith(`${canonicalDirectory}${sep}`)
 }
 
 /** Rewrites a draft in a disposable, tool-free Pi process without touching the active session. */
@@ -400,7 +458,8 @@ function respond(socket: Socket, response: ManagerResponse): void {
 function isManagerRequest(value: unknown): value is ManagerRequest {
   if (!isObject(value) || typeof value.id !== 'string') return false
   return value.action === 'list' || value.action === 'create' || value.action === 'open' || value
-        .action === 'command'
+        .action === 'close'
+    || value.action === 'delete' || value.action === 'command'
     || value.action === 'improve_prompt' || value.action === 'run_prompt'
     || value.action === 'status' || value.action === 'restart'
 }

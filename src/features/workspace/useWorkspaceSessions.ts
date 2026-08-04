@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { listDirectories, listRecentSessions, listSessions, sendPiCommand } from '../../api.ts'
+import {
+  closeSession,
+  deleteSession,
+  listDirectories,
+  listRecentSessions,
+  listSessions,
+  sendPiCommand,
+} from '../../api.ts'
 import type { JsonObject, RecentSession, SessionSummary } from '../../../shared/types.ts'
 import { promptSessionTitle } from '../composer/prompt-title.ts'
 import { recentWorkspaces } from './recent-workspaces.ts'
@@ -234,6 +241,24 @@ export function useWorkspaceSessions(
     [nameSessionFromFirstPrompt, onDraftMessage, onError, onInitialMessageSent, refreshSessions],
   )
 
+  /** Terminates an active session's Pi process, keeping its history for later reopening. */
+  const handleCloseSession = useCallback(async (sessionId: string): Promise<void> => {
+    await closeSession(sessionId)
+    if (selectedIdRef.current === sessionId) setSelectedId('')
+    await refreshSessions()
+  }, [refreshSessions])
+
+  /** Permanently deletes a session file, closing its Pi process first when active. */
+  const handleDeleteSession = useCallback(
+    async (sessionId: string | undefined, sessionPath: string): Promise<void> => {
+      await deleteSession(sessionId, sessionPath)
+      if (sessionId !== undefined && selectedIdRef.current === sessionId) setSelectedId('')
+      await refreshSessions()
+      setSentSessions((current) => current.filter((session) => session.sessionPath !== sessionPath))
+    },
+    [refreshSessions],
+  )
+
   const updateSession = useCallback(
     (
       sessionId: string,
@@ -316,6 +341,8 @@ export function useWorkspaceSessions(
     completedSessionIds,
     creatingSession,
     directoryPickerOpen,
+    handleCloseSession,
+    handleDeleteSession,
     isRefreshingSessions,
     markSessionCompleted,
     nameSessionFromFirstPrompt,

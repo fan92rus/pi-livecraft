@@ -29,6 +29,7 @@ import type {
   SessionSummary,
 } from '../shared/types.ts'
 import { isObject } from '../shared/is-object.ts'
+import { MobileTopBar } from './components/MobileTopBar.tsx'
 import { Composer } from './features/composer/Composer.tsx'
 import { ToastStack, type Toast } from './features/notifications/ToastStack.tsx'
 import { sessionActivity, type PiConnection } from './features/conversation/activity.ts'
@@ -169,6 +170,9 @@ function App() {
   const activeTheme = useMemo(() => resolveActiveTheme(themePreferences), [themePreferences])
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Mobile-only overlay state (drive the top-bar drawer and tools bottom sheet).
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
 
   // Transient UI requests and measurements
   type LoadingPhase = 'hidden' | 'entering' | 'visible' | 'exiting'
@@ -1056,11 +1060,32 @@ function App() {
       className={`app-shell ${
         rightPanelVisible ? 'right-sidebar-visible' : 'right-sidebar-collapsed'
       }`}
+      data-mobile-nav={mobileNavOpen}
+      data-mobile-tools={mobileToolsOpen}
       style={{
         '--right-sidebar-width': `${rightSidebarWidth}px`,
         '--workspace-sidebar-width': `${workspaceSidebarWidth}px`,
       } as CSSProperties}
     >
+      <MobileTopBar
+        creating={creatingSession}
+        mobileNavOpen={mobileNavOpen}
+        mobileToolsOpen={mobileToolsOpen}
+        onCreate={() => {
+          setMobileNavOpen(false)
+          void startAndSelectSession(() => createSession(workspacePath))
+        }}
+        onToggleNav={() => setMobileNavOpen((open) => !open)}
+        onToggleTools={() => setMobileToolsOpen((open) => !open)}
+      />
+      {mobileNavOpen && (
+        <button
+          aria-label='Close sessions'
+          className='mobile-backdrop mobile-backdrop-nav'
+          onClick={() => setMobileNavOpen(false)}
+          type='button'
+        />
+      )}
       <WorkspaceSidebar
         compactingSessionIds={compactingSessionIds}
         completedSessionIds={completedSessionIds}
@@ -1080,8 +1105,14 @@ function App() {
         onOpenSession={async (recentSession) => {
           await startAndSelectSession(() => openSession(workspacePath, recentSession.sessionPath))
         }}
-        onSelectOtherWorkspaceSession={(session) => selectWorkspace(session.cwd, session.id)}
-        onSelectSession={setSelectedId}
+        onSelectOtherWorkspaceSession={(session) => {
+          setMobileNavOpen(false)
+          selectWorkspace(session.cwd, session.id)
+        }}
+        onSelectSession={(sessionId) => {
+          setMobileNavOpen(false)
+          setSelectedId(sessionId)
+        }}
         onError={(cause) => showToast('error', messageOf(cause))}
         onOpenSettings={() => setSettingsOpen(true)}
         onResize={updateWorkspaceSidebarWidth}
@@ -1256,6 +1287,15 @@ function App() {
             </>
           )}
       </main>
+
+      {mobileToolsOpen && (
+        <button
+          aria-label='Close workspace tools'
+          className='mobile-backdrop mobile-backdrop-tools'
+          onClick={() => setMobileToolsOpen(false)}
+          type='button'
+        />
+      )}
 
       <RightSidebar
         activeSessionId={selectedId}

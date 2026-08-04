@@ -562,6 +562,30 @@
 .composer-select-content.prompt {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong));
 }
+.composer-select-search {
+  padding: 6px 6px 0;
+}
+.composer-select-search-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+  outline: 0;
+}
+.composer-select-search-input:focus {
+  border-color: color-mix(in srgb, var(--secondary) 55%, var(--line-strong));
+}
+.composer-select-empty {
+  padding: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
 .composer-select-option {
   display: flex;
   align-items: center;

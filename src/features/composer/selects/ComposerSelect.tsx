@@ -1,5 +1,5 @@
 import * as Select from '@radix-ui/react-select'
-import type { RefObject } from 'react'
+import { useEffect, useMemo, useState, type RefObject } from 'react'
 
 /** Generic Radix-based select dropdown shared by all composer toolbar controls. */
 export function ComposerSelect(
@@ -13,6 +13,9 @@ export function ComposerSelect(
     onOptionsPointerLeave,
     options,
     placeholder,
+    searchable,
+    searchPlaceholder,
+    searchEmptyLabel,
     tone,
     triggerRef,
     loading,
@@ -23,6 +26,9 @@ export function ComposerSelect(
     onValueChange: (value: string) => void
     options: { description?: string; kind?: 'action'; label: string; value: string }[]
     placeholder?: string
+    searchable?: boolean
+    searchPlaceholder?: string
+    searchEmptyLabel?: string
     tone: 'agent' | 'behavior' | 'command' | 'improve' | 'model' | 'prompt' | 'thinking'
     value: string
     loading?: boolean
@@ -33,6 +39,29 @@ export function ComposerSelect(
     triggerRef?: RefObject<HTMLButtonElement | null>
   },
 ) {
+  const [query, setQuery] = useState('')
+
+  // Reset the search box every time the dropdown reopens.
+  useEffect(() => {
+    if (!open) setQuery('')
+  }, [open])
+
+  // Filter the options against the query. The label carries the searchable text
+  // (for models it is "provider/model"), so typing either the full provider/model
+  // form or just the model name matches. Descriptions are also matched.
+  const visibleOptions = useMemo(
+    () =>
+      searchable
+        ? options.filter(
+          (option) =>
+            `${option.label} ${option.description ?? ''}`.toLowerCase().includes(
+              query.trim().toLowerCase(),
+            ),
+        )
+        : options,
+    [searchable, options, query],
+  )
+
   return (
     <Select.Root
       disabled={disabled}
@@ -53,23 +82,39 @@ export function ComposerSelect(
           position='popper'
           sideOffset={7}
         >
+          {searchable && (
+            <div className='composer-select-search'>
+              <input
+                aria-label='Search options'
+                autoFocus
+                className='composer-select-search-input'
+                onChange={(event) => setQuery(event.target.value)}
+                onPointerDown={(event) => event.stopPropagation()}
+                placeholder={searchPlaceholder ?? 'Search…'}
+                type='text'
+                value={query}
+              />
+            </div>
+          )}
           <Select.Viewport onPointerLeave={onOptionsPointerLeave}>
-            {options.map((option) => (
-              <Select.Item
-                className={`composer-select-option${option.kind === 'action' ? ' action' : ''}`}
-                key={option.value}
-                onPointerMove={() => onOptionPointerMove?.(option.value)}
-                value={option.value}
-              >
-                <Select.ItemText>
-                  <span className='composer-select-option-copy'>
-                    <span>{option.label}</span>
-                    {option.description && <small>{option.description}</small>}
-                  </span>
-                </Select.ItemText>
-                <Select.ItemIndicator aria-hidden='true'>✓</Select.ItemIndicator>
-              </Select.Item>
-            ))}
+            {visibleOptions.length === 0
+              ? <div className='composer-select-empty'>{searchEmptyLabel ?? 'No matches'}</div>
+              : visibleOptions.map((option) => (
+                <Select.Item
+                  className={`composer-select-option${option.kind === 'action' ? ' action' : ''}`}
+                  key={option.value}
+                  onPointerMove={() => onOptionPointerMove?.(option.value)}
+                  value={option.value}
+                >
+                  <Select.ItemText>
+                    <span className='composer-select-option-copy'>
+                      <span>{option.label}</span>
+                      {option.description && <small>{option.description}</small>}
+                    </span>
+                  </Select.ItemText>
+                  <Select.ItemIndicator aria-hidden='true'>✓</Select.ItemIndicator>
+                </Select.Item>
+              ))}
           </Select.Viewport>
         </Select.Content>
       </Select.Portal>

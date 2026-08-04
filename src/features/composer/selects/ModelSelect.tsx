@@ -29,11 +29,17 @@ export function ModelSelect(
           })
             .catch(onError)
       }}
-      options={models.map((item) => ({
-        label: String(item.name ?? item.id),
-        value: `${item.provider}/${item.id}`,
-      }))}
+      options={models.map((item) => {
+        // Display the provider alongside the model name and search against the
+        // combined "provider/model" form, so "opencode-go/deepseek-v4-flash"
+        // and "deepseek-v4-flash" both match.
+        const label = `${item.provider}/${item.name ?? item.id}`
+        return { label, value: `${item.provider}/${item.id}` }
+      })}
       placeholder='Choose a model'
+      searchable
+      searchEmptyLabel='No models match your search'
+      searchPlaceholder='Search provider/model or model name'
       tone='model'
       triggerRef={triggerRef}
       value={currentModel}

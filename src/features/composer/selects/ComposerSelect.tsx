@@ -1,5 +1,5 @@
 import * as Select from '@radix-ui/react-select'
-import { useEffect, useMemo, useState, type RefObject } from 'react'
+import { memo, useEffect, useMemo, useState, type RefObject } from 'react'
 
 export interface SelectOption {
   description?: string
@@ -10,7 +10,7 @@ export interface SelectOption {
 }
 
 /** Generic Radix-based select dropdown shared by all composer toolbar controls. */
-export function ComposerSelect(
+export const ComposerSelect = memo(function ComposerSelect(
   {
     ariaLabel,
     disabled,
@@ -131,7 +131,7 @@ export function ComposerSelect(
       </Select.Portal>
     </Select.Root>
   )
-}
+})
 
 /** Uses consistent SVG pictograms independent of a font or emoji set. */
 function ComposerSelectIcon(

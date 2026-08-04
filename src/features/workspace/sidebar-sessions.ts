@@ -15,7 +15,8 @@ export function sidebarSessions(
 }
 
 /** Live, non-exited sessions from every workspace, busiest (working/waiting) first.
- *  Surfaced in the sidebar regardless of the workspace that is currently open. */
+ *  Surfaced in the sidebar regardless of the workspace that is currently open.
+ *  Sessions are de-duplicated by session path so a reopened file never lists twice. */
 export function activeWorkspaceSessions(sessions: SessionSummary[]): SessionSummary[] {
   const statusPriority: Record<SessionSummary['status'], number> = {
     running: 0,
@@ -23,9 +24,16 @@ export function activeWorkspaceSessions(sessions: SessionSummary[]): SessionSumm
     idle: 2,
     exited: 3,
   }
-  return sessions
+  const ordered = sessions
     .filter((session) => session.status !== 'exited')
     .sort((left, right) => statusPriority[left.status] - statusPriority[right.status])
+  const seen = new Set<string>()
+  return ordered.filter((session) => {
+    const key = session.sessionPath ?? session.id
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /** Recently active sessions from added workspaces other than the open one.

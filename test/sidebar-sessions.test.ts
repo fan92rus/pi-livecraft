@@ -58,16 +58,19 @@ test('lists every live session from any workspace, busiest first', () => {
   const completed = {
     ...remoteSession,
     id: 'idle-1',
+    sessionPath: '/sessions/idle.jsonl',
     status: 'idle' as const,
   }
   const starting = {
     ...remoteSession,
     id: 'starting-1',
+    sessionPath: '/sessions/starting.jsonl',
     status: 'starting' as const,
   }
   const exited = {
     ...remoteSession,
     id: 'exited-1',
+    sessionPath: '/sessions/exited.jsonl',
     status: 'exited' as const,
   }
 
@@ -80,6 +83,22 @@ test('lists every live session from any workspace, busiest first', () => {
 test('activeWorkspaceSessions drops exited sessions', () => {
   const exited = { ...remoteSession, id: 'exited', status: 'exited' as const }
   assert.deepEqual(activeWorkspaceSessions([exited]), [])
+})
+
+test('activeWorkspaceSessions de-duplicates sessions sharing a session path', () => {
+  const idle = { ...remoteSession, id: 'idle', status: 'idle' as const }
+  const running = { ...remoteSession, id: 'running', status: 'running' as const }
+  // Same sessionPath as remoteSession (running), different id.
+  assert.deepEqual(
+    activeWorkspaceSessions([idle, running]),
+    [running],
+  )
+})
+
+test('activeWorkspaceSessions keeps distinct sessions without a session path', () => {
+  const noPathA = { ...remoteSession, id: 'a', sessionPath: undefined }
+  const noPathB = { ...remoteSession, id: 'b', sessionPath: undefined }
+  assert.equal(activeWorkspaceSessions([noPathA, noPathB]).length, 2)
 })
 
 // -- recentOtherWorkspaceSessions ------------------------------------------------------------

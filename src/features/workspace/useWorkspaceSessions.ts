@@ -110,7 +110,9 @@ export function useWorkspaceSessions(
         Promise.all(workspacePaths.map((path) => listRecentSessions(path))),
       ])
       if (version !== refreshVersionRef.current) return
-      const nextRecentSessions = recentByWorkspace.flat()
+      // The same session file can be returned for overlapping workspace paths
+      // (e.g. '.' and its absolute form, or symlinked directories); keep one entry per file.
+      const nextRecentSessions = dedupeRecentByPath(recentByWorkspace.flat())
       const autoSelectId = shouldAutoSelect
         ? pickSessionOnOpen(
           sidebarSessions(nextRecentSessions, cwd, sentSessionsRef.current),
@@ -407,4 +409,15 @@ function writeCompletedSessionIds(ids: ReadonlySet<string>): void {
   } catch {
     // sessionStorage may be unavailable
   }
+}
+
+/** Keeps one entry per session file, preferring the most recently active when paths overlap. */
+function dedupeRecentByPath(sessions: RecentSession[]): RecentSession[] {
+  const byPath = new Map<string, RecentSession>()
+  for (const session of sessions) {
+    const existing = byPath.get(session.sessionPath)
+    if (!existing || session.updatedAt > existing.updatedAt)
+      byPath.set(session.sessionPath, session)
+  }
+  return [...byPath.values()]
 }

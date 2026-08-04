@@ -34,9 +34,21 @@
   --on-accent: #ffffff;
   --on-danger: #ffffff;
 
+  /* ── Font scale (defaults, overridden by JS from settings) ── */
+  --ui-scale: 1;
+  --fs-scale-body: 1;
+  --fs-scale-code: 1;
+  --fs-scale-heading: 1;
+  --fs-scale-small: 1;
+
   color-scheme: light;
   --shadow: 0 12px 30px rgb(0 0 0 / 7%);
   --shadow-soft: 0 4px 14px rgb(0 0 0 / 5%);
+}
+
+/* Global UI scale (settings → zoom). Scales the whole interface uniformly. */
+html {
+  zoom: var(--ui-scale);
 }
 
 [data-theme="dark"] {

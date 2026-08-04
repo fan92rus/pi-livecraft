@@ -68,6 +68,12 @@ import {
   type CommandId,
 } from './features/commands/command-registry.ts'
 import { SettingsPanel } from './features/settings/SettingsPanel.tsx'
+import {
+  DEFAULT_FONT_SCALES,
+  FONT_SCALE_LIMITS,
+  FONT_SCALE_KEYS,
+  type FontScaleValues,
+} from './features/settings/font-scales.ts'
 import { ManagerRuntimeNotice } from './features/manager/ManagerRuntimeNotice.tsx'
 import {
   allThemes,
@@ -181,6 +187,7 @@ function App() {
   >()
   const [shortcuts, setShortcuts] = useState(() => readShortcuts())
   const [terminalCommand, setTerminalCommand] = useState(() => readTerminalCommand())
+  const [fontScales, setFontScales] = useState(() => readFontScales())
 
   // Workspace and session synchronization
   const selectedIdRef = useRef(window.localStorage.getItem('pi-livecraft.selected-session') ?? '')
@@ -414,6 +421,23 @@ function App() {
     root.style.setProperty('--shadow', shadows.shadow)
     root.style.setProperty('--shadow-soft', shadows['shadow-soft'])
   }, [activeTheme])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--ui-scale', String(fontScales.ui))
+    root.style.setProperty('--fs-scale-body', String(fontScales.body))
+    root.style.setProperty('--fs-scale-code', String(fontScales.code))
+    root.style.setProperty('--fs-scale-heading', String(fontScales.heading))
+    root.style.setProperty('--fs-scale-small', String(fontScales.small))
+  }, [fontScales])
+
+  const updateFontScale = useCallback((key: keyof FontScaleValues, value: number) => {
+    setFontScales((current) => {
+      const next = { ...current, [key]: value }
+      window.localStorage.setItem('pi-livecraft.font-scales', JSON.stringify(next))
+      return next
+    })
+  }, [])
 
   // Dialogs
   /** Clears an answered request immediately, then reconciles all pending requests with the manager. */
@@ -1329,11 +1353,13 @@ function App() {
           terminalCommand={terminalCommand}
           themes={allThemes(themePreferences)}
           activeThemeId={activeTheme.id}
+          fontScales={fontScales}
           onChange={(id, shortcut) => {
             const next = { ...shortcuts, [id]: shortcut }
             setShortcuts(next)
             window.localStorage.setItem('pi-livecraft.shortcuts', JSON.stringify(next))
           }}
+          onFontScaleChange={updateFontScale}
           onTerminalCommandChange={(value) => {
             setTerminalCommand(value)
             window.localStorage.setItem('pi-livecraft.terminal-command', value)
@@ -1381,6 +1407,27 @@ function readShortcuts(): Partial<Record<CommandId, string>> {
 function readTerminalCommand(): string {
   const stored = window.localStorage.getItem('pi-livecraft.terminal-command')
   return stored && stored.trim() && stored.includes('{cwd}') ? stored : ''
+}
+
+/** Restores font scale preferences, tolerating missing or malformed values. */
+function readFontScales(): FontScaleValues {
+  const fallback = DEFAULT_FONT_SCALES
+  try {
+    const value: unknown = JSON.parse(
+      window.localStorage.getItem('pi-livecraft.font-scales') ?? 'null',
+    )
+    if (!isObject(value)) return fallback
+    const result: FontScaleValues = { ...fallback }
+    for (const key of FONT_SCALE_KEYS) {
+      const raw = value[key]
+      if (typeof raw !== 'number' || !Number.isFinite(raw)) continue
+      const limit = FONT_SCALE_LIMITS[key]
+      result[key] = Math.min(limit.max, Math.max(limit.min, raw))
+    }
+    return result
+  } catch {
+    return fallback
+  }
 }
 
 /** Restores the last-selected right sidebar widget, falling back to git when not collapsed. */

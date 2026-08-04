@@ -23,8 +23,27 @@ SettingsPanel (modal container, tab state)
 | Tab ID | Label | Component | Props from `SettingsPanelProps` |
 |---|---|---|---|
 | `themes` | Color themes | `ThemeSettings` | `themes`, `activeThemeId`, `onSelectTheme`, `onDuplicateTheme`, `onRenameTheme`, `onUpdateThemeColor`, `onDeleteTheme`, `onResetTheme` |
+| `font` | Font | `FontSettings` | `fontScales`, `onFontScaleChange` |
 | `terminal` | Terminal | `TerminalSettings` | `terminalCommand`, `onTerminalCommandChange` |
 | `shortcuts` | Shortcuts | `ShortcutsSettings` | `definitions`, `shortcuts`, `onChange`, `onReset` |
+
+## Font tab
+
+The **Font** tab exposes per-category text scaling. Values live in `FontScaleValues`
+(`src/features/settings/font-scales.ts`) and default to `1`. `App.tsx` reads them at
+startup (tolerating missing or clamped values) and writes them to the root element as
+CSS custom properties:
+
+| Scale | CSS variable | Effect |
+|---|---|---|
+| `ui` | `--ui-scale` (as `zoom` on `<html>`) | Entire interface, including spacing |
+| `body` | `--fs-scale-body` | Message body and composer input |
+| `code` | `--fs-scale-code` | Code blocks and inline code |
+| `heading` | `--fs-scale-heading` | Headings in messages and tool output |
+| `small` | `--fs-scale-small` | Meta labels, timestamps, reasoning |
+
+Text rules that should scale reference these tokens via `calc(<px> * var(--fs-scale-*))`;
+the global `ui` scale is applied once as `zoom` on `<html>` and multiplies everything.
 
 ## Add a new tab
 

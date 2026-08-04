@@ -87,7 +87,9 @@
   display: block;
   margin-top: 8px;
   color: color-mix(in srgb, var(--surface) 76%, transparent);
-  font: 10px ui-monospace, monospace;
+  font:
+    calc(10px * var(--fs-scale-small)) ui-monospace,
+    monospace;
   text-align: right;
 }
 .message-image {
@@ -100,7 +102,10 @@
 }
 .content {
   overflow-wrap: anywhere;
-  font: 14px/1.7 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(14px * var(--fs-scale-body))/1.7 ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .content > :first-child, .reasoning > :first-child {
   margin-top: 0;
@@ -114,7 +119,7 @@
 .reasoning {
   margin: 0 0 13px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs-scale-small));
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -124,7 +129,9 @@
   border: 1px solid var(--line);
   border-radius: 7px;
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-  font: 11px/1.55 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.55 ui-monospace,
+    monospace;
   white-space: pre-wrap;
 }
 .reasoning :not(pre) > code {
@@ -134,6 +141,27 @@
   line-height: 1.25;
   letter-spacing: -0.025em;
   text-wrap: balance;
+}
+.content h1 {
+  font-size: calc(30px * var(--fs-scale-heading));
+}
+.content h2 {
+  font-size: calc(23px * var(--fs-scale-heading));
+}
+.content h3 {
+  font-size: calc(18px * var(--fs-scale-heading));
+}
+.content h4, .content h5, .content h6 {
+  font-size: calc(15px * var(--fs-scale-heading));
+}
+.reasoning h1 {
+  font-size: calc(20px * var(--fs-scale-heading));
+}
+.reasoning h2 {
+  font-size: calc(17px * var(--fs-scale-heading));
+}
+.reasoning h3, .reasoning h4, .reasoning h5, .reasoning h6 {
+  font-size: calc(15px * var(--fs-scale-heading));
 }
 .message.assistant .content h1,
 .message.assistant .content h2,
@@ -178,7 +206,9 @@
   border: 1px solid var(--line);
   border-radius: 9px;
   background: color-mix(in srgb, var(--canvas) 60%, var(--surface));
-  font: 12px/1.6 ui-monospace, monospace;
+  font:
+    calc(12px * var(--fs-scale-code))/1.6 ui-monospace,
+    monospace;
   white-space: pre-wrap;
 }
 .content :not(pre) > code {
@@ -186,7 +216,9 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
   color: var(--ink);
-  font: 12px ui-monospace, monospace;
+  font:
+    calc(12px * var(--fs-scale-code)) ui-monospace,
+    monospace;
 }
 .content a {
   color: var(--accent);

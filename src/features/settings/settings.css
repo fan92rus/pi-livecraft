@@ -230,6 +230,65 @@
 .terminal-command-error {
   color: var(--danger) !important;
 }
+.font-scale-controls {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.font-scale-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "copy percent"
+    "range range";
+  gap: 2px 12px;
+  align-items: center;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.font-scale-copy {
+  grid-area: copy;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.font-scale-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.font-scale-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.font-scale-row input[type="range"] {
+  grid-area: range;
+  width: 100%;
+  accent-color: var(--accent);
+}
+.font-scale-row output {
+  grid-area: percent;
+  min-width: 44px;
+  color: var(--ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.font-settings > button {
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+}
+.font-settings > button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
 .theme-settings > p {
   margin: 0 0 12px;
   color: var(--muted);

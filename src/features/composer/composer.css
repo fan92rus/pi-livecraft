@@ -65,6 +65,7 @@
   width: 100%;
   min-height: 76px;
   max-height: 400px;
+  font-size: calc(15px * var(--fs-scale-body));
   field-sizing: content;
   resize: none;
   overflow-y: auto;

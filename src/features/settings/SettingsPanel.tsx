@@ -10,6 +10,12 @@ import {
   type Theme,
   type ThemeVariable,
 } from './themes.ts'
+import {
+  FONT_SCALE_KEYS,
+  FONT_SCALE_LIMITS,
+  DEFAULT_FONT_SCALES,
+  type FontScaleValues,
+} from './font-scales.ts'
 
 const themeVariableLabels: Record<ThemeVariable, string> = {
   canvas: 'Background',
@@ -22,10 +28,26 @@ const themeVariableLabels: Record<ThemeVariable, string> = {
   danger: 'Danger',
 }
 
+const FONT_SCALE_LABELS: Record<keyof FontScaleValues, string> = {
+  ui: 'UI scale',
+  body: 'Body text',
+  code: 'Code',
+  heading: 'Headings',
+  small: 'Small text',
+}
+
+const FONT_SCALE_DESCRIPTIONS: Record<keyof FontScaleValues, string> = {
+  ui: 'Scales the entire interface, including spacing and panels.',
+  body: 'Message body and composer input.',
+  code: 'Code blocks and inline code.',
+  heading: 'Headings inside messages and tool output.',
+  small: 'Meta labels, timestamps, reasoning, and helper text.',
+}
+
 // ── Tab registry ───────────────────────────────────────────────────
 
 /** Identifies a settings tab. Extend this union when adding a new tab. */
-export type SettingsTabId = 'themes' | 'terminal' | 'shortcuts'
+export type SettingsTabId = 'themes' | 'font' | 'terminal' | 'shortcuts'
 
 /** Describes one tab in the settings modal. */
 export interface SettingsTabDefinition {
@@ -36,6 +58,7 @@ export interface SettingsTabDefinition {
 /** Ordered list of tabs rendered in the settings modal. */
 export const settingsTabs: SettingsTabDefinition[] = [
   { id: 'themes', label: 'Color themes' },
+  { id: 'font', label: 'Font' },
   { id: 'terminal', label: 'Terminal' },
   { id: 'shortcuts', label: 'Shortcuts' },
 ]
@@ -48,7 +71,9 @@ interface SettingsPanelProps {
   terminalCommand: string
   themes: Theme[]
   activeThemeId: string
+  fontScales: FontScaleValues
   onChange: (id: CommandId, shortcut: string) => void
+  onFontScaleChange: (key: keyof FontScaleValues, value: number) => void
   onTerminalCommandChange: (value: string) => void
   onSelectTheme: (id: string) => void
   onDuplicateTheme: () => void
@@ -258,6 +283,48 @@ function TerminalSettings({ terminalCommand, onTerminalCommandChange }: Terminal
   )
 }
 
+interface FontSettingsProps {
+  scales: FontScaleValues
+  onChange: (key: keyof FontScaleValues, value: number) => void
+  onReset: () => void
+}
+
+function FontSettings({ scales, onChange, onReset }: FontSettingsProps) {
+  return (
+    <section className='font-settings'>
+      <p>
+        Adjust text size per category. UI scale applies to the whole interface; the other sliders
+        tune a specific kind of text on top of it.
+      </p>
+      <div className='font-scale-controls'>
+        {FONT_SCALE_KEYS.map((key) => {
+          const limit = FONT_SCALE_LIMITS[key]
+          const percent = Math.round(scales[key] * 100)
+          return (
+            <label className='font-scale-row' key={key}>
+              <span className='font-scale-copy'>
+                <strong>{FONT_SCALE_LABELS[key]}</strong>
+                <small>{FONT_SCALE_DESCRIPTIONS[key]}</small>
+              </span>
+              <input
+                aria-label={FONT_SCALE_LABELS[key]}
+                max={limit.max}
+                min={limit.min}
+                onChange={(event) => onChange(key, Number(event.target.value))}
+                step={0.05}
+                type='range'
+                value={scales[key]}
+              />
+              <output>{percent}%</output>
+            </label>
+          )
+        })}
+      </div>
+      <button onClick={onReset} type='button'>Reset to default</button>
+    </section>
+  )
+}
+
 interface ShortcutsSettingsProps {
   definitions: CommandDefinition[]
   shortcuts: Partial<Record<CommandId, string>>
@@ -326,7 +393,9 @@ export function SettingsPanel({
   terminalCommand,
   themes,
   activeThemeId,
+  fontScales,
   onChange,
+  onFontScaleChange,
   onTerminalCommandChange,
   onSelectTheme,
   onDuplicateTheme,
@@ -398,6 +467,19 @@ export function SettingsPanel({
                 onUpdateThemeColor={onUpdateThemeColor}
                 themeName={themeName}
                 themes={themes}
+              />
+            </TabPanel>
+          )}
+          {activeTab === 'font' && (
+            <TabPanel key='font' id='settings-tab-font' labelledBy='settings-tab-btn-font'>
+              <FontSettings
+                onChange={onFontScaleChange}
+                onReset={() =>
+                  FONT_SCALE_KEYS
+                    .forEach((key) =>
+                      onFontScaleChange(key, DEFAULT_FONT_SCALES[key])
+                    )}
+                scales={fontScales}
               />
             </TabPanel>
           )}

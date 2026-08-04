@@ -7,7 +7,9 @@
   border-radius: 9px;
   background: color-mix(in srgb, var(--accent) 3%, var(--surface));
   color: color-mix(in srgb, var(--accent) 40%, var(--ink));
-  font: 12px/1.5 ui-monospace, monospace;
+  font:
+    calc(12px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
 }
 .tool-call.error {
   border-color: color-mix(in srgb, var(--danger) 25%, var(--line));
@@ -46,7 +48,9 @@
 .tool-call-command {
   min-width: 0;
   color: inherit;
-  font: 11px ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code)) ui-monospace,
+    monospace;
 }
 .tool-call-command > code {
   display: block;
@@ -56,7 +60,9 @@
 }
 .tool-call-range {
   flex: 0 0 auto;
-  font: 11px ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code)) ui-monospace,
+    monospace;
 }
 .tool-call-heading small {
   display: inline-flex;
@@ -65,7 +71,9 @@
   gap: 5px;
   margin-left: auto;
   color: currentColor;
-  font: 10px ui-monospace, monospace;
+  font:
+    calc(10px * var(--fs-scale-code)) ui-monospace,
+    monospace;
 }
 .tool-call-spinner {
   display: inline-block;
@@ -102,7 +110,9 @@
     color-mix(in srgb, var(--surface) 97%, var(--canvas))
   );
   color: inherit;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   text-align: left;
@@ -113,7 +123,10 @@
   border-top: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
   padding: 5px 10px;
   color: var(--muted);
-  font: 10px/1.5 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(10px * var(--fs-scale-small))/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .tool-call-preview {
   display: block;
@@ -160,7 +173,9 @@
 .tool-call-csv-preview table {
   min-width: max-content;
   border-collapse: collapse;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
 }
 .tool-call-csv-preview th,
 .tool-call-csv-preview td {
@@ -180,12 +195,17 @@
 .tool-call-csv-notice {
   margin: 7px 0 9px;
   color: var(--muted);
-  font: 10px/1.5 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(10px * var(--fs-scale-small))/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .tool-call-csv-empty {
   margin: 0;
   padding: 9px 10px;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
 }
 .tool-call-csv-source {
   max-height: 540px;
@@ -197,7 +217,9 @@
   border-radius: 0;
   padding: 9px 10px;
   color: inherit;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   white-space: pre;
 }
 .tool-call-svg-preview {
@@ -223,7 +245,9 @@
   padding: 9px 10px 4px;
   background: transparent;
   color: inherit;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -231,7 +255,10 @@
   display: block;
   padding: 0 10px 9px;
   color: var(--muted);
-  font: 10px/1.5 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(10px * var(--fs-scale-small))/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .tool-call-preview > span + span {
   padding-top: 0;
@@ -259,7 +286,10 @@
   margin: 0;
   padding: 5px 8px;
   background: color-mix(in srgb, var(--accent) 7%, transparent);
-  font: 10px/1.4 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(10px * var(--fs-scale-small))/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .tool-call-edit-line {
   display: grid;
@@ -268,7 +298,9 @@
 .tool-call-edit-line > span {
   padding: 2px 0;
   color: var(--subtle);
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   text-align: right;
   user-select: none;
 }
@@ -281,7 +313,9 @@
   min-width: 0;
   margin: 0;
   padding: 2px 8px;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -323,7 +357,10 @@
 .tool-call-notice {
   margin: 10px 10px 0;
   color: var(--muted);
-  font: 11px/1.5 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(11px * var(--fs-scale-small))/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .tool-call.semi-detailed .tool-call-content,
 .tool-call.semi-detailed .tool-call-preview {
@@ -347,7 +384,9 @@
   border-radius: 0;
   padding: 9px 10px;
   color: inherit;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -357,7 +396,9 @@
   border-radius: 0;
   padding: 9px 10px;
   color: inherit;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -365,7 +406,10 @@
   max-height: 380px;
   overflow-y: auto;
   padding: 14px 16px 18px;
-  font: 13px/1.65 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(13px * var(--fs-scale-body))/1.65 ui-sans-serif,
+    system-ui,
+    sans-serif;
   overflow-wrap: anywhere;
   text-align: left;
 }
@@ -399,7 +443,9 @@
   padding: 1px 3px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--accent) 7%, transparent);
-  font: 11px ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code)) ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
 }
 .tool-call-markdown-preview pre {
@@ -408,7 +454,9 @@
   border: 1px solid var(--line);
   border-radius: 7px;
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   white-space: pre-wrap;
 }
 .tool-call-markdown-preview table {
@@ -430,7 +478,10 @@
 }
 .tool-call-markdown {
   padding: 14px 16px 18px;
-  font: 13px/1.65 ui-sans-serif, system-ui, sans-serif;
+  font:
+    calc(13px * var(--fs-scale-body))/1.65 ui-sans-serif,
+    system-ui,
+    sans-serif;
   overflow-wrap: anywhere;
 }
 .tool-call-markdown > :first-child {
@@ -451,6 +502,30 @@
   margin: 14px 0 8px;
   line-height: 1.3;
 }
+.tool-call-markdown h1 {
+  font-size: calc(24px * var(--fs-scale-heading));
+}
+.tool-call-markdown h2 {
+  font-size: calc(19px * var(--fs-scale-heading));
+}
+.tool-call-markdown h3 {
+  font-size: calc(16px * var(--fs-scale-heading));
+}
+.tool-call-markdown h4, .tool-call-markdown h5, .tool-call-markdown h6 {
+  font-size: calc(13px * var(--fs-scale-heading));
+}
+.tool-call-markdown-preview h1 {
+  font-size: calc(20px * var(--fs-scale-heading));
+}
+.tool-call-markdown-preview h2 {
+  font-size: calc(17px * var(--fs-scale-heading));
+}
+.tool-call-markdown-preview h3,
+.tool-call-markdown-preview h4,
+.tool-call-markdown-preview h5,
+.tool-call-markdown-preview h6 {
+  font-size: calc(14px * var(--fs-scale-heading));
+}
 .tool-call-markdown h1,
 .tool-call-markdown h2,
 .tool-call-markdown h3,
@@ -470,7 +545,9 @@
   padding: 1px 3px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--accent) 7%, transparent);
-  font: 11px ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code)) ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
 }
 .tool-call-markdown pre {
@@ -479,7 +556,9 @@
   border: 1px solid var(--line);
   border-radius: 7px;
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   white-space: pre-wrap;
 }
 .tool-call-markdown table {
@@ -497,7 +576,9 @@
   word-break: break-word;
 }
 .tool-call-syntax {
-  font: 11px/1.5 ui-monospace, monospace !important;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace !important;
 }
 .tool-call-syntax code {
   background: transparent !important;
@@ -509,7 +590,9 @@
   padding: 0;
   background: transparent;
   color: inherit;
-  font: 11px/1.5 ui-monospace, monospace;
+  font:
+    calc(11px * var(--fs-scale-code))/1.5 ui-monospace,
+    monospace;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }

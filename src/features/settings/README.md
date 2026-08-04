@@ -5,7 +5,7 @@
 ## Current ownership
 
 - `commands/` defines commands, default shortcuts, normalization, and conflict detection.
-- `settings/` captures shortcut changes and resets them.
+- `settings/` captures shortcut changes, resets them, and exposes font scale preferences.
 - `App.tsx` persists shortcuts, theme, conversation view, workspace restoration, and right sidebar state.
 - `composer/` persists drafts per session.
 

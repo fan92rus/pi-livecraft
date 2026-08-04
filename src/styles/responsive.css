@@ -93,75 +93,8 @@
     display: flex;
     flex-direction: column;
   }
-  .sidebar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    padding: 12px 14px;
-    border-right: 0;
-    border-bottom: 1px solid var(--panel-line);
-  }
-  .brand {
-    grid-row: 1;
-    grid-column: 1;
-    min-width: 0;
-    margin-bottom: 0;
-  }
-  .workspace-group {
-    grid-row: 2;
-    grid-column: 1 / -1;
-  }
-  .workspace-path {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .workspace-path span {
-    flex: 0 0 auto;
-  }
-  .workspace-path strong {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .new-session {
-    grid-row: 1;
-    grid-column: 2;
-    align-self: center;
-    width: auto;
-    margin-bottom: 0;
-    padding-inline: 13px;
-  }
-  .session-list {
-    grid-row: 3;
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-  }
-  .other-workspace-sessions {
-    grid-column: 1 / -1;
-    max-height: none;
-  }
-  .other-session-list {
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-  .session-item {
-    min-width: 220px;
-  }
   .workspace {
     flex: 1;
-  }
-  .right-sidebar {
-    max-height: 34dvh;
-    border-top: 1px solid var(--panel-line);
-  }
-  .right-sidebar-panel {
-    border-left: 0;
   }
   .message.user {
     max-width: 92%;
@@ -236,15 +169,16 @@
   }
 }
 
-/* ──────────────────────────────── Phone nav ───────────────────────────────
- * Below the small breakpoint the stacked tablet reflow would leave a phone
- * with a tall header and a permanent bottom tools strip and almost no room
- * for the conversation. We trade those two columns for overlay surfaces:
+/* ──────────────────────────────── Slim-screen nav ────────────────────────
+ * Below 900px the fixed desktop columns give way to a single column. Rather
+ * than stack a tall sidebar header and a permanent bottom tools strip (which
+ * would squeeze the conversation on narrow screens), we swap in overlay
+ * surfaces, so the conversation always owns most of the vertical space:
  *   - .mobile-top-bar  compact rail replacing the desktop chrome
  *   - .sidebar         fixed left drawer slide-in (data-mobile-nav)
  *   - .right-sidebar   fixed bottom sheet slide-up (data-mobile-tools)
- * Everything here is width-gated, so desks and tablets are untouched. */
-@media (max-width: 480px) {
+ * Everything here is width-gated, so desktop (>=900px) stays untouched. */
+@media (max-width: 900px) {
   /* Top bar rail */
   .mobile-top-bar {
     position: sticky;

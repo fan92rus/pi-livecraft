@@ -2,10 +2,40 @@ import assert from 'node:assert/strict'
 import { chmod, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { connect, type Socket } from 'node:net'
-import test from 'node:test'
+import test, { after } from 'node:test'
 import { isObject } from '../shared/is-object.ts'
+
+const INTEGRATION_TEST_MARKER = 'PI_LIVECRAFT_INTEGRATION_TEST'
+
+/**
+ * Spawns a manager/supervisor, tags it as integration-test-only, and registers
+ * it so the suite can guarantee its teardown. `node --test` does not exit while a
+ * child process or a connected socket is still alive, so leaving a child behind
+ * (even after a failure or a timeout) hangs `npm test` forever and stalls the
+ * live manager restart. The environment marker also makes these children
+ * distinguishable when debugging abandoned test processes.
+ */
+const children = new Set<ChildProcess>()
+after(async () => {
+  for (const child of [...children]) {
+    await stopProcess(child)
+    children.delete(child)
+  }
+})
+function spawnTracked(
+  file: string,
+  args: string[],
+  options: SpawnOptions,
+): ChildProcess {
+  const child = spawn(file, args, {
+    ...options,
+    env: { ...options.env, [INTEGRATION_TEST_MARKER]: '1' },
+  })
+  children.add(child)
+  return child
+}
 
 test(
   'keeps supervision alive without relaunching a manager that crashes',
@@ -13,7 +43,11 @@ test(
   async (t) => {
     const supervisor = spawn(process.execPath, ['server/manager-supervisor.ts'], {
       cwd: process.cwd(),
-      env: { ...process.env, PI_LIVECRAFT_MANAGER_PORT: 'invalid' },
+      env: {
+        ...process.env,
+        PI_LIVECRAFT_MANAGER_PORT: 'invalid',
+        PI_LIVECRAFT_INTEGRATION_TEST: '1',
+      },
       stdio: ['ignore', 'ignore', 'pipe'],
     })
     t.after(() => void stopProcess(supervisor))
@@ -36,7 +70,7 @@ test(
   { timeout: 10_000 },
   async () => {
     const port = 45_000 + (process.pid % 10_000)
-    const supervisor = spawn(process.execPath, ['server/manager-supervisor.ts'], {
+    const supervisor = spawnTracked(process.execPath, ['server/manager-supervisor.ts'], {
       cwd: process.cwd(),
       env: { ...process.env, PI_LIVECRAFT_MANAGER_PORT: String(port) },
       stdio: 'ignore',
@@ -76,7 +110,7 @@ test('reconciles live Pi work before restarting the manager', { timeout: 10_000 
   const directory = await mkdtemp(join(tmpdir(), 'pi-manager-'))
   const port = 45_000 + (process.pid % 10_000)
   await writeFakePi(directory)
-  const manager = spawn(process.execPath, ['server/manager.ts'], {
+  const manager = spawnTracked(process.execPath, ['server/manager.ts'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -184,7 +218,7 @@ test(
     const directory = await mkdtemp(join(tmpdir(), 'pi-manager-'))
     const port = 45_000 + (process.pid % 10_000)
     await writeFakePi(directory, true)
-    const manager = spawn(process.execPath, ['server/manager.ts'], {
+    const manager = spawnTracked(process.execPath, ['server/manager.ts'], {
       cwd: process.cwd(),
       env: {
         ...process.env,
@@ -220,7 +254,7 @@ test('completes a manual compact without timeout', { timeout: 10_000 }, async ()
   const directory = await mkdtemp(join(tmpdir(), 'pi-manager-'))
   const port = 45_000 + (process.pid % 10_000)
   await writeFakePi(directory)
-  const manager = spawn(process.execPath, ['server/manager.ts'], {
+  const manager = spawnTracked(process.execPath, ['server/manager.ts'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -255,7 +289,7 @@ test('restarts an exited Pi session when reopening it', { timeout: 10_000 }, asy
   const directory = await mkdtemp(join(tmpdir(), 'pi-manager-'))
   const port = 45_000 + (process.pid % 10_000)
   await writeFakePi(directory)
-  const manager = spawn(process.execPath, ['server/manager.ts'], {
+  const manager = spawnTracked(process.execPath, ['server/manager.ts'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -297,7 +331,7 @@ test('improves a prompt with the cheapest isolated model', { timeout: 10_000 }, 
   const directory = await mkdtemp(join(tmpdir(), 'pi-manager-'))
   const port = 45_000 + (process.pid % 10_000)
   await writeFakePi(directory)
-  const manager = spawn(process.execPath, ['server/manager.ts'], {
+  const manager = spawnTracked(process.execPath, ['server/manager.ts'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -332,7 +366,7 @@ test('improves a prompt with a direction preset', { timeout: 10_000 }, async () 
   const directory = await mkdtemp(join(tmpdir(), 'pi-manager-'))
   const port = 45_000 + (process.pid % 10_000)
   await writeFakePi(directory)
-  const manager = spawn(process.execPath, ['server/manager.ts'], {
+  const manager = spawnTracked(process.execPath, ['server/manager.ts'], {
     cwd: process.cwd(),
     env: {
       ...process.env,

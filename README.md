@@ -208,6 +208,7 @@ When these extensions are installed and configured in Pi, Livecraft already cont
 <summary><strong>Troubleshooting</strong></summary>
 
 - `pi: command not found`: install Pi globally and verify that `pi --version` works in the shell used to start Livecraft. On native Windows, `where.exe pi.cmd` must find the npm launcher.
+- Use a custom Pi build (fork): set `PI_LIVECRAFT_PI_PACKAGE` to the npm package name of that build (e.g. `@fan92rus/pi-coding-agent`) and install it globally. Livecraft resolves the installed package behind `pi.cmd`; without the variable it falls back to the official `@earendil-works/pi-coding-agent`.
 - The manager or backend is unavailable: check ports `43120` and `43121`, or set `PI_LIVECRAFT_MANAGER_PORT` and `PI_LIVECRAFT_BACKEND_PORT`. After a manager crash, restart `npm run dev`; the supervisor intentionally does not relaunch it automatically.
 - A new session cannot answer: launch Pi once, configure a provider with `/login`, and verify that the `/agent` extension is available if your setup expects it.
 - Native Windows desktop actions unavailable: verify that Windows PowerShell is available. Terminal selection tries Windows Terminal, Alacritty, WezTerm, PowerShell 7, Windows PowerShell, then Command Prompt.

@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { Tooltip } from '../../components/Tooltip.tsx'
 import type {
+  ArgumentCompletion,
   JsonObject,
   PromptTemplate,
   SessionSnapshot,
@@ -19,10 +20,12 @@ import type {
 import { maxComposerImages, prepareComposerImage, type ComposerImage } from './composer-images.ts'
 import {
   ensureCompactCommand,
+  filterArgumentCompletions,
   formatTokens,
   isCommandDraft,
   isCompactCommandDraft,
   isObject,
+  parseCommandArguments,
   readComposerDraft,
 } from './composer-utils.ts'
 import { AgentSelect } from './selects/AgentSelect.tsx'
@@ -53,6 +56,7 @@ export const Composer = memo(function Composer({
   onAgentChange,
   onRequestAgentOptions,
   onCommand,
+  onArgumentCompletions,
   commands,
   running,
   compacting,
@@ -79,6 +83,10 @@ export const Composer = memo(function Composer({
   onAgentChange: (agent: string) => void
   onRequestAgentOptions: () => void
   onCommand: (command: JsonObject) => Promise<JsonObject>
+  onArgumentCompletions: (
+    commandName: string,
+    argumentPrefix: string,
+  ) => Promise<ArgumentCompletion[]>
   commands: JsonObject[]
   running: boolean
   compacting: boolean
@@ -136,6 +144,12 @@ export const Composer = memo(function Composer({
   const [slashOpen, setSlashOpen] = useState(false)
   const [slashFilter, setSlashFilter] = useState('')
   const [slashIndex, setSlashIndex] = useState(-1)
+  const [argumentItems, setArgumentItems] = useState<ArgumentCompletion[]>([])
+  const [argumentOpen, setArgumentOpen] = useState(false)
+  const [argumentIndex, setArgumentIndex] = useState(0)
+  const argumentDebounceRef = useRef<number>(0)
+  const argumentVersionRef = useRef(0)
+  const argumentCacheRef = useRef<Map<string, ArgumentCompletion[]>>(new Map())
   const [behavior, setBehavior] = useState<'steer' | 'followUp'>('steer')
   const model = isObject(snapshot.state?.model) ? snapshot.state.model : null
   const currentModel = model && typeof model.id === 'string' && typeof model.provider === 'string'
@@ -226,7 +240,10 @@ export const Composer = memo(function Composer({
 
   // Flush the debounced draft to storage before unmounting so no typed text is lost.
   useEffect(() => {
-    return () => window.clearTimeout(draftPersistTimerRef.current)
+    return () => {
+      window.clearTimeout(draftPersistTimerRef.current)
+      window.clearTimeout(argumentDebounceRef.current)
+    }
   }, [])
 
   /** Available commands filtered by the text after the slash. */
@@ -254,6 +271,25 @@ export const Composer = memo(function Composer({
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [slashOpen])
 
+  useLayoutEffect(() => {
+    const selectedItem = formRef.current?.querySelector<HTMLElement>(
+      '.argument-commands [aria-selected="true"]',
+    )
+    selectedItem?.scrollIntoView({ block: 'nearest' })
+  }, [argumentIndex, argumentItems])
+
+  useEffect(() => {
+    if (!argumentOpen) return
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (!(event.target instanceof Node)) return
+      const dropdown = formRef.current?.querySelector<HTMLElement>('.argument-commands')
+      if (dropdown?.contains(event.target)) return
+      setArgumentOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [argumentOpen])
+
   /** Updates the visible draft immediately and persists it on a debounce so typing never blocks on storage I/O. */
   const setDraftMessage = useCallback((nextMessage: string): void => {
     setMessage(nextMessage)
@@ -269,12 +305,62 @@ export const Composer = memo(function Composer({
     }, 400)
   }, [draftStorageKey])
 
+  /** Fetches the subcommand/argument completions a slash command exposes, debounced so typing never floods the RPC.
+   *  The first request per command uses an empty prefix and caches the full completion list; later keystrokes
+   *  filter that cache locally via filterArgumentCompletions, so typing after the command never fires extra RPCs. */
+  const refreshArgumentCompletions = useCallback((draft: string): void => {
+    const parsed = parseCommandArguments(draft, allCommands)
+    window.clearTimeout(argumentDebounceRef.current)
+    if (!parsed) {
+      setArgumentOpen(false)
+      setArgumentItems([])
+      return
+    }
+    argumentDebounceRef.current = window.setTimeout(() => {
+      const version = ++argumentVersionRef.current
+      const cached = argumentCacheRef.current.get(parsed.commandName)
+      const apply = (items: ArgumentCompletion[]): void => {
+        if (version !== argumentVersionRef.current) return // a newer keystroke superseded this request
+        const filtered = filterArgumentCompletions(items, parsed.argumentPrefix)
+        setArgumentItems(filtered)
+        setArgumentIndex(0)
+        setArgumentOpen(filtered.length > 0)
+      }
+      if (cached) {
+        apply(cached)
+        return
+      }
+      onArgumentCompletions(parsed.commandName, '')
+        .then((items) => {
+          argumentCacheRef.current.set(parsed.commandName, items)
+          apply(items)
+        })
+        .catch(() => {
+          if (version !== argumentVersionRef.current) return
+          setArgumentOpen(false)
+          setArgumentItems([])
+        })
+    }, 150)
+  }, [allCommands, onArgumentCompletions])
+
   /** Inserts the selected slash command into the textarea and closes the popover. */
   const selectSlashCommand = useCallback((name: string): void => {
     setDraftMessage(`/${name} `)
     setSlashOpen(false)
     setSlashIndex(-1)
-  }, [setDraftMessage])
+    // Trigger argument completion right after a command is chosen so the subcommand menu follows it.
+    refreshArgumentCompletions(`/${name} `)
+  }, [refreshArgumentCompletions, setDraftMessage])
+
+  /** Accepts the focused subcommand, replacing only the argument prefix so further arguments stay editable. */
+  const selectArgumentCompletion = useCallback((item: ArgumentCompletion): void => {
+    const parsed = parseCommandArguments(messageRef.current, allCommands)
+    if (!parsed) return
+    setDraftMessage(`/${parsed.commandName} ${item.value} `)
+    setArgumentOpen(false)
+    setArgumentItems([])
+    textareaRef.current?.focus()
+  }, [allCommands, setDraftMessage])
 
   /** Shows a template without persisting it, retaining the existing draft until a selection is made. */
   const previewPrompt = useCallback((prompt: PromptTemplate): void => {
@@ -337,6 +423,8 @@ export const Composer = memo(function Composer({
     }
     setSubmitting(true)
     setSuggestion(undefined)
+    setSlashOpen(false)
+    setArgumentOpen(false)
     setDraftMessage('')
     setImages([])
     try {
@@ -468,7 +556,7 @@ export const Composer = memo(function Composer({
             <div
               aria-selected={index === slashIndex}
               className={`slash-command-item${index === slashIndex ? ' selected' : ''}`}
-              key={String(command.name)}
+              key={`${String(command.name)}-${index}`}
               onClick={() => selectSlashCommand(String(command.name))}
               onMouseDown={(event) => event.preventDefault()}
               role='option'
@@ -476,6 +564,25 @@ export const Composer = memo(function Composer({
               <span className='slash-command-name'>/{String(command.name)}</span>
               {typeof command.description === 'string' && (
                 <span className='slash-command-desc'>{command.description}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {argumentOpen && argumentItems.length > 0 && (
+        <div className='slash-commands argument-commands' role='listbox'>
+          {argumentItems.map((item, index) => (
+            <div
+              aria-selected={index === argumentIndex}
+              className={`slash-command-item${index === argumentIndex ? ' selected' : ''}`}
+              key={item.value}
+              onClick={() => selectArgumentCompletion(item)}
+              onMouseDown={(event) => event.preventDefault()}
+              role='option'
+            >
+              <span className='slash-command-name'>{item.label}</span>
+              {typeof item.description === 'string' && (
+                <span className='slash-command-desc'>{item.description}</span>
               )}
             </div>
           ))}
@@ -491,14 +598,46 @@ export const Composer = memo(function Composer({
           const next = event.target.value
           setDraftMessage(next)
           if (next.startsWith('/') && allCommands.length > 0) {
-            setSlashOpen(true)
-            setSlashFilter(next.slice(1))
-            setSlashIndex(0)
+            // A space after a known command opens the subcommand menu; otherwise the slash menu stays.
+            const parsed = parseCommandArguments(next, allCommands)
+            if (parsed) {
+              setSlashOpen(false)
+              refreshArgumentCompletions(next)
+            } else {
+              setArgumentOpen(false)
+              setSlashOpen(true)
+              setSlashFilter(next.slice(1))
+              setSlashIndex(0)
+            }
           } else {
             setSlashOpen(false)
+            setArgumentOpen(false)
           }
         }}
         onKeyDown={(event) => {
+          if (argumentOpen && argumentItems.length > 0) {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              setArgumentOpen(false)
+              return
+            }
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              setArgumentIndex((index) => Math.min(index + 1, argumentItems.length - 1))
+              return
+            }
+            if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              setArgumentIndex((index) => Math.max(index - 1, 0))
+              return
+            }
+            if (event.key === 'Enter' || event.key === 'Tab') {
+              event.preventDefault()
+              selectArgumentCompletion(argumentItems[argumentIndex])
+              return
+            }
+            return
+          }
           if (slashOpen && filteredCommands.length > 0) {
             if (event.key === 'Escape') {
               event.preventDefault()

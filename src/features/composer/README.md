@@ -35,6 +35,10 @@ All data arrives through props. The Composer never calls the backend directly.
 - `message`, `images` — the draft; persisted to `localStorage` per session
   (`pi-livecraft.composer-draft.<sessionId>`).
 - `slashOpen`, `slashFilter`, `slashIndex` — slash-command popover.
+- `argumentOpen`, `argumentItems`, `argumentIndex` — subcommand popover fed by the
+  `get_argument_completions` RPC. The first request per command uses an empty prefix and
+  caches the full completion list; later keystrokes filter that cache locally via
+  `filterArgumentCompletions` without further RPC calls.
 - `openSelect` — which dropdown (agent/model/thinking) is open.
 - `behavior` — `steer` vs `followUp`, only visible while Pi is running.
 - `submitting` — prevents double-send during the API call.

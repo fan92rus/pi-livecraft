@@ -1,4 +1,5 @@
 import type {
+  ArgumentCompletion,
   DirectoryListing,
   GitFileDiff,
   GitPushResult,
@@ -282,6 +283,34 @@ export async function sendPiCommand(sessionId: string, command: JsonObject): Pro
     method: 'POST',
     body: JSON.stringify(command),
   })
+}
+
+/** Asks Pi for the argument completions a slash command exposes (e.g. /agile subcommands). */
+export async function getArgumentCompletions(
+  sessionId: string,
+  commandName: string,
+  argumentPrefix: string,
+): Promise<ArgumentCompletion[]> {
+  const result = await request<{ data?: { items?: unknown } }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/commands`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'get_argument_completions',
+        commandName,
+        argumentPrefix,
+      }),
+    },
+  )
+  const items = result.data?.items
+  return Array.isArray(items)
+    ? items.filter(
+      (item): item is ArgumentCompletion =>
+        isObject(item)
+        && typeof item.value === 'string'
+        && typeof item.label === 'string',
+    )
+    : []
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

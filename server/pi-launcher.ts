@@ -3,7 +3,7 @@ import { findPackageJSON } from 'node:module'
 import { delimiter, dirname, isAbsolute, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const piPackage = '@earendil-works/pi-coding-agent'
+const defaultPiPackage = '@earendil-works/pi-coding-agent'
 
 export interface PiLauncherInvocation {
   command: string
@@ -17,6 +17,10 @@ interface PiPackageJson {
 /**
  * Resolves Pi without executing npm's Windows command shim. On Windows npm installs
  * pi.cmd, but invoking its package CLI with Node keeps every RPC argument out of cmd.exe.
+ *
+ * The npm package name to resolve defaults to the official @earendil-works/pi-coding-agent,
+ * but can be overridden with PI_LIVECRAFT_PI_PACKAGE to point at a fork build
+ * (e.g. @fan92rus/pi-coding-agent). An empty or whitespace value falls back to the default.
  */
 export function resolvePiLauncher(
   platform = process.platform,
@@ -25,6 +29,7 @@ export function resolvePiLauncher(
 ): PiLauncherInvocation {
   if (platform !== 'win32') return { command: 'pi', argsPrefix: [] }
 
+  const piPackage = env.PI_LIVECRAFT_PI_PACKAGE?.trim() || defaultPiPackage
   const path = Object.entries(env).find(([key]) => key.toLowerCase() === 'path')?.[1]
   if (!path) throw new Error('Cannot find pi.cmd because PATH is empty')
 

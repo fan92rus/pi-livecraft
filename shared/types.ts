@@ -195,6 +195,13 @@ export interface PromptTemplate {
   description?: string
 }
 
+/** A subcommand or argument option offered by a slash command's completion provider. */
+export interface ArgumentCompletion {
+  value: string
+  label: string
+  description?: string
+}
+
 export interface SessionSnapshot {
   state: JsonObject | null
   messages: JsonObject[]

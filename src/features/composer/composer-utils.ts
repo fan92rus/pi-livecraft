@@ -1,4 +1,4 @@
-import type { JsonObject } from '../../../shared/types.ts'
+import type { ArgumentCompletion, JsonObject } from '../../../shared/types.ts'
 
 /** Makes technical values readable in composer labels without changing RPC values. */
 export function capitalizeLabel(value: string): string {
@@ -16,6 +16,43 @@ export function isCommandDraft(text: string, commands: JsonObject[]): boolean {
   const name = /^\/([^\s]+)/.exec(text.trim())?.[1].toLowerCase()
   return name !== undefined
     && commands.some((command) => String(command.name).toLowerCase() === name)
+}
+
+/**
+ * Splits a draft into a known command name and the argument text that follows it,
+ * or null when the draft is not a command followed by a space.
+ *
+ * `/agile` → null (no space yet, command menu owns it)
+ * `/agile ` → { commandName: 'agile', argumentPrefix: '' }
+ * `/agile run extra` → { commandName: 'agile', argumentPrefix: 'run extra' }
+ */
+export function parseCommandArguments(
+  text: string,
+  commands: JsonObject[],
+): { commandName: string; argumentPrefix: string } | null {
+  const match = /^(\/[A-Za-z0-9][A-Za-z0-9_-]*)(\s.*)?$/s.exec(text)
+  if (!match) return null
+  const commandName = match[1].slice(1).toLowerCase()
+  if (!commands.some((command) => String(command.name).toLowerCase() === commandName)) return null
+  if (match[2] === undefined) return null // no space after the command name yet
+  return { commandName, argumentPrefix: match[2].slice(1) }
+}
+
+/**
+ * Filters cached argument completions by a case-insensitive prefix on the item
+ * value or label. An empty or whitespace prefix returns the full list, so the
+ * first request (which fetches everything) doubles as the unfiltered view.
+ */
+export function filterArgumentCompletions(
+  items: ArgumentCompletion[],
+  argumentPrefix: string,
+): ArgumentCompletion[] {
+  const prefix = argumentPrefix.trim().toLowerCase()
+  if (!prefix) return items
+  return items.filter(
+    (item) => item.value.toLowerCase().startsWith(prefix)
+      || item.label.toLowerCase().startsWith(prefix),
+  )
 }
 
 /** Returns true when the trimmed draft is exactly the /compact slash command with no arguments. */

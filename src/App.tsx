@@ -12,6 +12,7 @@ import {
   openSession,
   openTerminal,
   pushCommits,
+  getArgumentCompletions,
   refreshQuotas,
   resetGitCommit,
   restartManager,
@@ -22,6 +23,7 @@ import {
 } from './api.ts'
 import { quotaRefreshAllowed } from '../shared/quota-refresh.ts'
 import type {
+  ArgumentCompletion,
   GitSnapshot,
   JsonObject,
   ManagerRuntimeStatus,
@@ -724,6 +726,12 @@ function App() {
     if (command.type === 'compact') showToast('notice', 'Session compacted.')
     return result
   }, [refreshSnapshot, selectedId, showToast])
+  /** Asks Pi for the subcommands/arguments a slash command offers for autocompletion. */
+  const handleComposerArgumentCompletions = useCallback(
+    (commandName: string, argumentPrefix: string): Promise<ArgumentCompletion[]> =>
+      getArgumentCompletions(selectedId, commandName, argumentPrefix),
+    [selectedId],
+  )
   /** Sends the current draft with the behavior supported by the active session. */
   const handleComposerSend = useCallback(
     async (
@@ -1222,6 +1230,7 @@ function App() {
                       onAgentChange={handleComposerAgentChange}
                       onRequestAgentOptions={() => fetchAgentOptions(selectedSession.id)}
                       onCommand={handleComposerCommand}
+                      onArgumentCompletions={handleComposerArgumentCompletions}
                       commands={snapshot.commands}
                       agentLoading={snapshotSessionId !== selectedSession.id}
                       focusRequest={focusComposerRequest}

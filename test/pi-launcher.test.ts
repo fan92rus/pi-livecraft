@@ -6,10 +6,12 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { resolvePiLauncher } from '../server/pi-launcher.ts'
 
-async function npmPiLayout(): Promise<{ root: string; bin: string; cli: string }> {
+async function npmPiLayout(packageName = '@earendil-works/pi-coding-agent'): Promise<{ root: string; bin: string; cli: string }> {
   const root = await mkdtemp(join(tmpdir(), 'pi launcher ü '))
   const bin = join(root, 'node_modules', '.bin')
-  const packageRoot = join(root, 'node_modules', '@earendil-works', 'pi-coding-agent')
+  const packageRoot = packageName.startsWith('@')
+    ? join(root, 'node_modules', ...packageName.split('/'))
+    : join(root, 'node_modules', packageName)
   const cli = join(packageRoot, 'dist', 'cli.mjs')
   await mkdir(join(packageRoot, 'dist'), { recursive: true })
   await mkdir(bin, { recursive: true })
@@ -61,4 +63,30 @@ test('passes hostile RPC values to the resolved CLI exactly as argument-array da
     child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`CLI exited ${code}`)))
   })
   assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), ['--system-prompt', ...hostile])
+})
+
+test('resolves a fork package when PI_LIVECRAFT_PI_PACKAGE is set', async (t) => {
+  const { root, bin, cli } = await npmPiLayout('@fan92rus/pi-coding-agent')
+  t.after(() => rm(root, { force: true, recursive: true }))
+  await writeFile(cli, '')
+  const invocation = resolvePiLauncher(
+    'win32',
+    { PaTh: bin, PI_LIVECRAFT_PI_PACKAGE: '@fan92rus/pi-coding-agent' },
+    ';',
+  )
+  assert.equal(invocation.command, process.execPath)
+  assert.equal(invocation.argsPrefix[0], cli)
+})
+
+test('falls back to the official package when PI_LIVECRAFT_PI_PACKAGE is empty', async (t) => {
+  const { root, bin, cli } = await npmPiLayout('@earendil-works/pi-coding-agent')
+  t.after(() => rm(root, { force: true, recursive: true }))
+  await writeFile(cli, '')
+  const invocation = resolvePiLauncher(
+    'win32',
+    { PaTh: bin, PI_LIVECRAFT_PI_PACKAGE: '   ' },
+    ';',
+  )
+  assert.equal(invocation.command, process.execPath)
+  assert.equal(invocation.argsPrefix[0], cli)
 })

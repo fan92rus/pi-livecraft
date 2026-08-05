@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   ensureCompactCommand,
+  filterArgumentCompletions,
   fuzzyModelMatch,
   isCommandDraft,
   isCompactCommandDraft,
+  parseCommandArguments,
 } from '../src/features/composer/composer-utils.ts'
 
 test('detects only slash commands exposed by Pi', () => {
@@ -49,6 +51,57 @@ test('handles empty command list', () => {
   const result = ensureCompactCommand([])
   assert.equal(result.length, 1)
   assert.equal(result[0].name, 'compact')
+})
+
+test('parses a known command followed by a space into name and argument prefix', () => {
+  const commands = [{ name: 'agile' }]
+  assert.deepEqual(parseCommandArguments('/agile ', commands), { commandName: 'agile', argumentPrefix: '' })
+  assert.deepEqual(parseCommandArguments('/agile run', commands), { commandName: 'agile', argumentPrefix: 'run' })
+  assert.deepEqual(parseCommandArguments('/agile run extra', commands), { commandName: 'agile', argumentPrefix: 'run extra' })
+})
+
+test('returns null when the command has no space yet so the slash menu keeps ownership', () => {
+  const commands = [{ name: 'agile' }]
+  assert.equal(parseCommandArguments('/agile', commands), null)
+  assert.equal(parseCommandArguments('/agi', commands), null)
+})
+
+test('returns null for an unknown command or non-command input', () => {
+  const commands = [{ name: 'agile' }]
+  assert.equal(parseCommandArguments('/unknown ', commands), null)
+  assert.equal(parseCommandArguments('plain text', commands), null)
+  assert.equal(parseCommandArguments('', commands), null)
+})
+
+test('returns the full list for an empty or whitespace argument prefix', () => {
+  const items = [
+    { value: 'on', label: 'on' },
+    { value: 'off', label: 'off' },
+    { value: 'run', label: 'run' },
+  ]
+  assert.equal(filterArgumentCompletions(items, '').length, 3)
+  assert.equal(filterArgumentCompletions(items, '   ').length, 3)
+})
+
+test('filters cached completions by a case-insensitive prefix on value or label', () => {
+  const items = [
+    { value: 'on', label: 'on' },
+    { value: 'off', label: 'off' },
+    { value: 'run', label: 'run' },
+    { value: 'setup', label: 'setup' },
+  ]
+  assert.deepEqual(filterArgumentCompletions(items, 'o'), [
+    { value: 'on', label: 'on' },
+    { value: 'off', label: 'off' },
+  ])
+  assert.deepEqual(filterArgumentCompletions(items, 'ru'), [{ value: 'run', label: 'run' }])
+  assert.deepEqual(filterArgumentCompletions(items, 'setup'), [{ value: 'setup', label: 'setup' }])
+  assert.deepEqual(filterArgumentCompletions(items, 'zzz'), [])
+})
+
+test('matches label even when it diverges from the value', () => {
+  const items = [{ value: 'run', label: 'run <role> <model>' }]
+  assert.equal(filterArgumentCompletions(items, 'run').length, 1)
 })
 
 // A model's canonical value is "provider/id" (hyphenated) while its label is

@@ -343,9 +343,6 @@
     min-width: 0;
     width: 100%;
   }
-  .sidebar .other-workspace-sessions {
-    max-height: 35%;
-  }
 
   /* Workspace tools -> bottom sheet */
   .right-sidebar {

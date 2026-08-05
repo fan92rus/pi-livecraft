@@ -36,26 +36,6 @@ export function activeWorkspaceSessions(sessions: SessionSummary[]): SessionSumm
   })
 }
 
-/** Recently active sessions from added workspaces other than the open one.
- *  Excludes sessions backed by a live Pi process (those live in the active section). */
-export function recentOtherWorkspaceSessions(
-  recentSessions: RecentSession[],
-  activeSessions: SessionSummary[],
-  workspacePath: string,
-): RecentSession[] {
-  const activePaths = new Set(
-    activeSessions.map((session) => session.sessionPath).filter((path): path is string =>
-      Boolean(path)
-    ),
-  )
-  return recentSessions
-    .filter((session) =>
-      session.cwd !== workspacePath
-      && !activePaths.has(session.sessionPath)
-    )
-    .sort((left, right) => right.updatedAt - left.updatedAt)
-}
-
 /**
  * Picks the session to auto-select when opening a workspace.
  * Priority: most recent completed unviewed session → most recent active session → none.

@@ -10,11 +10,7 @@ import { Tooltip } from '../../components/Tooltip.tsx'
 import type { RecentSession, SessionSummary } from '../../../shared/types.ts'
 import { sessionIndicator } from './session-indicator.ts'
 import { SessionStatusIndicator } from './SessionStatusIndicator.tsx'
-import {
-  activeWorkspaceSessions,
-  recentOtherWorkspaceSessions,
-  sidebarSessions,
-} from './sidebar-sessions.ts'
+import { activeWorkspaceSessions, sidebarSessions } from './sidebar-sessions.ts'
 import { maxWorkspaceSidebarWidth, minWorkspaceSidebarWidth } from './workspace-sidebar.ts'
 
 interface WorkspaceSidebarProps {
@@ -83,10 +79,6 @@ export function WorkspaceSidebar({
     // Live sessions appear in the active section; keep the recent list to completed history.
     return recent.filter((session) => !activePaths.has(session.sessionPath))
   }, [activePaths, recentSessions, sentSessions, workspacePath])
-  const otherRecentSessions = useMemo(
-    () => recentOtherWorkspaceSessions(recentSessions, activeSessions, workspacePath),
-    [activeSessions, recentSessions, workspacePath],
-  )
 
   useEffect(() => {
     selectedSessionRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
@@ -320,39 +312,6 @@ export function WorkspaceSidebar({
           </p>
         )}
       </nav>
-      {otherRecentSessions.length > 0 && (
-        <section className='other-workspace-sessions'>
-          <h2>Recently active</h2>
-          <nav
-            aria-label='Recently active sessions in other workspaces'
-            className='other-session-list'
-          >
-            {otherRecentSessions.map((recent) => (
-              <Tooltip
-                key={recent.sessionPath}
-                label={`${recent.name}\n${new Date(recent.updatedAt).toLocaleString('en-US')}`}
-              >
-                <button
-                  aria-label={`${recent.name} in workspace ${recent.cwd}`}
-                  className='session-item'
-                  onClick={() => {
-                    setOpeningSessionPath(recent.sessionPath)
-                    void onOpenSession(recent).catch(onError).finally(() =>
-                      setOpeningSessionPath('')
-                    )
-                  }}
-                  type='button'
-                >
-                  <span>
-                    <strong>{recent.name}</strong>
-                    <small>{recent.cwd}</small>
-                  </span>
-                </button>
-              </Tooltip>
-            ))}
-          </nav>
-        </section>
-      )}
       {contextMenu && (
         <SessionContextMenu
           sessionId={contextMenu.sessionId}

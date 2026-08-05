@@ -4,7 +4,6 @@ import type { RecentSession, SessionSummary } from '../shared/types.ts'
 import {
   activeWorkspaceSessions,
   pickSessionOnOpen,
-  recentOtherWorkspaceSessions,
   sidebarSessions,
 } from '../src/features/workspace/sidebar-sessions.ts'
 
@@ -99,49 +98,6 @@ test('activeWorkspaceSessions keeps distinct sessions without a session path', (
   const noPathA = { ...remoteSession, id: 'a', sessionPath: undefined }
   const noPathB = { ...remoteSession, id: 'b', sessionPath: undefined }
   assert.equal(activeWorkspaceSessions([noPathA, noPathB]).length, 2)
-})
-
-// -- recentOtherWorkspaceSessions ------------------------------------------------------------
-
-const otherRecent: RecentSession = {
-  id: 'other-1',
-  cwd: '/remote',
-  name: 'Other recent',
-  sessionPath: '/sessions/other.jsonl',
-  updatedAt: 500,
-}
-
-const inWorkspaceRecent: RecentSession = {
-  ...otherRecent,
-  id: 'current-1',
-  cwd: '/workspace',
-  sessionPath: '/sessions/current.jsonl',
-}
-
-const olderRecent: RecentSession = {
-  ...otherRecent,
-  id: 'older-1',
-  sessionPath: '/sessions/older.jsonl',
-  updatedAt: 100,
-}
-
-test('shows recent sessions from other workspaces, newest first', () => {
-  assert.deepEqual(
-    recentOtherWorkspaceSessions([olderRecent, otherRecent], [], '/workspace'),
-    [otherRecent, olderRecent],
-  )
-})
-
-test('hides recent sessions from the opened workspace', () => {
-  assert.deepEqual(
-    recentOtherWorkspaceSessions([inWorkspaceRecent], [], '/workspace'),
-    [],
-  )
-})
-
-test('hides recently active sessions backed by a live process (they live in the active section)', () => {
-  const live = { ...remoteSession, id: 'other-1', sessionPath: '/sessions/other.jsonl' }
-  assert.deepEqual(recentOtherWorkspaceSessions([otherRecent], [live], '/workspace'), [])
 })
 
 // -- pickSessionOnOpen ------------------------------------------------------

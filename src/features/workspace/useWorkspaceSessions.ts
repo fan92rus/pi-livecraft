@@ -96,23 +96,17 @@ export function useWorkspaceSessions(
 
   useEffect(() => writeCompletedSessionIds(completedSessionIds), [completedSessionIds])
 
-  /** Reloads sessions while discarding responses superseded by a newer workspace refresh.
-   *  Recent sessions are loaded for every added workspace so the sidebar can surface active
-   *  and recently active sessions regardless of which directory is currently open. */
+  /** Reloads sessions while discarding responses superseded by a newer workspace refresh. */
   const refreshSessions = useCallback(async (cwd = workspacePath) => {
     const version = ++refreshVersionRef.current
     const shouldAutoSelect = autoSelectOnRefreshRef.current
     setIsRefreshingSessions(true)
     try {
-      const workspacePaths = [...new Set([cwd, ...recentWorkspacePaths])]
-      const [nextSessions, recentByWorkspace] = await Promise.all([
+      const [nextSessions, nextRecentSessions] = await Promise.all([
         listSessions(),
-        Promise.all(workspacePaths.map((path) => listRecentSessions(path))),
+        listRecentSessions(cwd),
       ])
       if (version !== refreshVersionRef.current) return
-      // The same session file can be returned for overlapping workspace paths
-      // (e.g. '.' and its absolute form, or symlinked directories); keep one entry per file.
-      const nextRecentSessions = dedupeRecentByPath(recentByWorkspace.flat())
       const autoSelectId = shouldAutoSelect
         ? pickSessionOnOpen(
           sidebarSessions(nextRecentSessions, cwd, sentSessionsRef.current),
@@ -168,7 +162,7 @@ export function useWorkspaceSessions(
     } finally {
       if (version === refreshVersionRef.current) setIsRefreshingSessions(false)
     }
-  }, [onError, onSessionsRefreshed, recentWorkspacePaths, workspacePath])
+  }, [onError, onSessionsRefreshed, workspacePath])
 
   useEffect(() => void refreshSessions(), [refreshSessions])
 
@@ -409,15 +403,4 @@ function writeCompletedSessionIds(ids: ReadonlySet<string>): void {
   } catch {
     // sessionStorage may be unavailable
   }
-}
-
-/** Keeps one entry per session file, preferring the most recently active when paths overlap. */
-function dedupeRecentByPath(sessions: RecentSession[]): RecentSession[] {
-  const byPath = new Map<string, RecentSession>()
-  for (const session of sessions) {
-    const existing = byPath.get(session.sessionPath)
-    if (!existing || session.updatedAt > existing.updatedAt)
-      byPath.set(session.sessionPath, session)
-  }
-  return [...byPath.values()]
 }

@@ -242,7 +242,9 @@ async function startSession(summary: SessionSummary): Promise<void> {
   })
 
   try {
-    const state = await pi.request({ type: 'get_state' })
+    // Pi resolves the session store before entering the RPC loop; a large store
+    // (hundreds of session files) can take well over the 30s default timeout.
+    const state = await pi.request({ type: 'get_state' }, 120_000)
     const sessionPath = isObject(state.data) && typeof state.data.sessionFile === 'string'
       ? state.data.sessionFile
       : undefined

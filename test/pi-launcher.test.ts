@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { resolvePiLauncher } from '../server/pi-launcher.ts'
+import { packageNameFromShim, resolvePiLauncher } from '../server/pi-launcher.ts'
 
 async function npmPiLayout(packageName = '@earendil-works/pi-coding-agent'): Promise<{ root: string; bin: string; cli: string }> {
   const root = await mkdtemp(join(tmpdir(), 'pi launcher ü '))
@@ -15,13 +15,30 @@ async function npmPiLayout(packageName = '@earendil-works/pi-coding-agent'): Pro
   const cli = join(packageRoot, 'dist', 'cli.mjs')
   await mkdir(join(packageRoot, 'dist'), { recursive: true })
   await mkdir(bin, { recursive: true })
-  await writeFile(join(bin, 'pi.cmd'), '@echo hostile shim')
+  // npm writes the real CLI path into the shim; dp0 is the directory of pi.cmd.
+  const shimPackage = packageName.split('/').join('\\')
+  await writeFile(
+    join(bin, 'pi.cmd'),
+    `@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\nendLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\node_modules\\${shimPackage}\\dist\\cli.mjs" %*\r\n`,
+  )
   await writeFile(
     join(packageRoot, 'package.json'),
-    JSON.stringify({ bin: { pi: 'dist/cli.mjs' } }),
+    JSON.stringify({ name: packageName, bin: { pi: 'dist/cli.mjs' } }),
   )
   return { root, bin, cli }
 }
+
+test('discovers the installed package name from the pi.cmd shim', () => {
+  assert.equal(
+    packageNameFromShim('"%_prog%"  "%dp0%\\node_modules\\@fan92rus\\pi-coding-agent\\dist\\cli.js" %*'),
+    '@fan92rus/pi-coding-agent',
+  )
+  assert.equal(
+    packageNameFromShim('"%_prog%"  "%dp0%\\node_modules\\@earendil-works\\pi-coding-agent\\dist\\cli.js" %*'),
+    '@earendil-works/pi-coding-agent',
+  )
+  assert.equal(packageNameFromShim('@echo hostile shim'), null)
+})
 
 test('resolves the package CLI behind pi.cmd without executing it', async (t) => {
   const { root, bin, cli } = await npmPiLayout()
@@ -78,7 +95,7 @@ test('resolves a fork package when PI_LIVECRAFT_PI_PACKAGE is set', async (t) =>
   assert.equal(invocation.argsPrefix[0], cli)
 })
 
-test('falls back to the official package when PI_LIVECRAFT_PI_PACKAGE is empty', async (t) => {
+test('falls back to shim discovery when PI_LIVECRAFT_PI_PACKAGE is empty', async (t) => {
   const { root, bin, cli } = await npmPiLayout('@earendil-works/pi-coding-agent')
   t.after(() => rm(root, { force: true, recursive: true }))
   await writeFile(cli, '')

@@ -3,8 +3,6 @@ import { findPackageJSON } from 'node:module'
 import { delimiter, dirname, isAbsolute, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const defaultPiPackage = '@earendil-works/pi-coding-agent'
-
 export interface PiLauncherInvocation {
   command: string
   argsPrefix: string[]
@@ -15,12 +13,23 @@ interface PiPackageJson {
 }
 
 /**
+ * Reads the installed npm package name out of an npm-generated pi.cmd shim.
+ * npm writes the real CLI path into the shim (`..."%dp0%\node_modules\@scope\name\dist\cli.js" %*`),
+ * so the installed package can be discovered without configuring it.
+ * Returns null when the shim does not reference a node_modules package path.
+ */
+export function packageNameFromShim(shimContent: string): string | null {
+  const match = /node_modules[/\\](@[^/\\]+[/\\][^/\\\s"]+|[^/\\\s"]+)/.exec(shimContent)
+  return match?.[1]?.replaceAll('\\', '/') ?? null
+}
+
+/**
  * Resolves Pi without executing npm's Windows command shim. On Windows npm installs
  * pi.cmd, but invoking its package CLI with Node keeps every RPC argument out of cmd.exe.
  *
- * The npm package name to resolve defaults to the official @earendil-works/pi-coding-agent,
- * but can be overridden with PI_LIVECRAFT_PI_PACKAGE to point at a fork build
- * (e.g. @fan92rus/pi-coding-agent). An empty or whitespace value falls back to the default.
+ * The npm package to resolve is discovered from the shim itself (so any installed build,
+ * official or fork, just works). It can be pinned with PI_LIVECRAFT_PI_PACKAGE
+ * (e.g. @fan92rus/pi-coding-agent); an empty or whitespace value re-enables discovery.
  */
 export function resolvePiLauncher(
   platform = process.platform,
@@ -29,7 +38,7 @@ export function resolvePiLauncher(
 ): PiLauncherInvocation {
   if (platform !== 'win32') return { command: 'pi', argsPrefix: [] }
 
-  const piPackage = env.PI_LIVECRAFT_PI_PACKAGE?.trim() || defaultPiPackage
+  const configuredPackage = env.PI_LIVECRAFT_PI_PACKAGE?.trim() || null
   const path = Object.entries(env).find(([key]) => key.toLowerCase() === 'path')?.[1]
   if (!path) throw new Error('Cannot find pi.cmd because PATH is empty')
 
@@ -39,6 +48,12 @@ export function resolvePiLauncher(
     if (!existsSync(piCmdPath)) continue
 
     try {
+      let piPackage = configuredPackage
+      if (!piPackage) {
+        // No override: the npm shim hardcodes the installed package path, so discover it.
+        piPackage = packageNameFromShim(readFileSync(piCmdPath, 'utf8'))
+      }
+      if (!piPackage) continue
       const packageJsonPath = findPackageJSON(piPackage, pathToFileURL(piCmdPath))
       if (!packageJsonPath) continue
       const packageRoot = realpathSync(dirname(packageJsonPath))
@@ -54,7 +69,9 @@ export function resolvePiLauncher(
     }
   }
 
-  throw new Error(`Cannot find ${piPackage} from a pi.cmd entry on PATH`)
+  throw new Error(
+    `Cannot find ${configuredPackage ?? 'the installed pi package'} from a pi.cmd entry on PATH`,
+  )
 }
 
 function isPathInside(root: string, path: string): boolean {
